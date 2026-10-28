@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Control y Gestión de Campo - DATA_PF_WIN</title>
+  
+  <!-- Favicon / Ícono del Sistema (Referente a Sistema y Comercial) -->
+  <link rel="icon" type="image/svg+xml" href="https://api.iconify.design/lucide:store.svg?color=%230284c7">
+
+  <!-- Fonts & Tailwind CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff', 100: '#e0f2fe', 500: '#0284c7', 600: '#0369a1', 700: '#075985', 900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tab-active { border-bottom: 3px solid #0284c7; color: #0284c7; font-weight: 700; background-color: #ffffff; }
+    
+    /* Estilos para redimensionar columnas tipo Excel */
+    table { min-width: 1400px; border-collapse: collapse; }
+    th { position: relative; user-select: none; }
+    .resizer {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+      cursor: col-resize; user-select: none; touch-action: none;
+    }
+    .resizer:hover, .resizing { background-color: #0284c7; }
+
+    /* Animación de alerta para tiempo dilatado */
+    @keyframes pulse-alert {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .alert-rojo { animation: pulse-alert 1.5s infinite; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col relative">
+
+  <script>
+    const SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx0C6hWh7qLFsQH1jy6afj3evZ4qVb6Qb4R75aOz8qsyRNnBz6yETKxCinLrMt_E0kqlA/exec";
+  </script>
+
+  <!-- Notificación Toast Popup -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-3">
+    <div class="p-1 bg-emerald-500 rounded-full text-white">
+      <i data-lucide="check" class="w-4 h-4"></i>
+    </div>
+    <div>
+      <p class="text-xs font-bold">¡Guardado Exitosamente!</p>
+      <p class="text-[10px] text-slate-300" id="toastMessage">El registro fue actualizado y sincronizado.</p>
+    </div>
+  </div>
+
+  <!-- Header Principal -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-brand-500 rounded-lg text-white">
+          <i data-lucide="store" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight">Control Operativo de Campo — DATA_PF_WIN</h1>
+          <p class="text-xs text-slate-400">Monitoreo Comercial (Tecsycom) & Tiempos en Vivo</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <!-- Reloj en vivo -->
+        <div class="text-xs font-mono bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-emerald-400 flex items-center space-x-2">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          <span id="liveClock">00:00:00</span>
+        </div>
+
+        <div id="syncStatus" class="flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-slate-500" id="syncDot"></span>
+          <span id="syncText">Listo</span>
+        </div>
+        <button onclick="fetchFromGoogleSheets()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Sincronizar Sheet</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="max-w-[98%] mx-auto px-4 py-5 flex-grow w-full space-y-5">
+
+    <!-- Panel Superior -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      
+      <!-- Carga de CSV / Excel -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-xs font-bold text-slate-800 uppercase flex items-center space-x-1.5">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-brand-500"></i>
+              <span>Carga de CSV / AppSheet</span>
+            </h2>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-3">
+            Carga tu archivo CSV. La columna virtual de Agencia identifica las ventas automáticamente.
+          </p>
+        </div>
+
+        <label class="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+          <div class="flex flex-col items-center justify-center pt-2 pb-2">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5 text-slate-400 mb-1"></i>
+            <p class="text-xs text-slate-600 font-medium"><span class="text-brand-600 font-semibold">Seleccionar CSV / Excel</span></p>
+          </div>
+          <input type="file" id="csvFileInput" accept=".csv,.txt,.xlsx,.xls" class="hidden" onchange="handleFileSelect(event)">
+        </label>
+      </div>
+
+      <!-- Resumen & Exportación -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 lg:col-span-2 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold text-slate-800 uppercase flex items-center space-x-1.5">
+            <i data-lucide="timer" class="w-4 h-4 text-brand-500"></i>
+            <span>Resumen Operativo & Estado de Dilación</span>
+          </h2>
+          <div class="flex items-center space-x-2">
+            <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center space-x-1 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Exportar Todo (.xlsx)</span>
+            </button>
+            <span class="text-xs text-slate-500 font-semibold" id="totalRecordsBadge">Total: 0</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 my-1">
+          <div class="bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+            <p class="text-[10px] font-bold text-rose-800 uppercase flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-rose-600"></span><span>Alertado (Excedido)</span>
+            </p>
+            <p class="text-lg font-extrabold text-rose-600 mt-0.5" id="cntAlertado">0</p>
+          </div>
+          <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+            <p class="text-[10px] font-bold text-amber-800 uppercase flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Próximo Limite</span>
+            </p>
+            <p class="text-lg font-extrabold text-amber-600 mt-0.5" id="cntProximo">0</p>
+          </div>
+          <div class="bg-purple-50 p-2.5 rounded-lg border border-purple-100">
+            <p class="text-[10px] font-bold text-purple-700 uppercase">En Proceso</p>
+            <p class="text-lg font-extrabold text-purple-600 mt-0.5" id="cntProceso">0</p>
+          </div>
+          <div class="bg-cyan-50 p-2.5 rounded-lg border border-cyan-100">
+            <p class="text-[10px] font-bold text-cyan-700 uppercase">En Camino</p>
+            <p class="text-lg font-extrabold text-cyan-600 mt-0.5" id="cntCamino">0</p>
+          </div>
+          <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
+            <p class="text-[10px] font-bold text-emerald-700 uppercase">Finalizados</p>
+            <p class="text-lg font-extrabold text-emerald-600 mt-0.5" id="cntFinalizado">0</p>
+          </div>
+        </div>
+
+        <div class="mt-2 flex space-x-2">
+          <div class="relative flex-grow">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2 text-slate-400"></i>
+            <input type="text" id="searchInput" onkeyup="filterData()" placeholder="Buscar por cliente, DNI, técnico o código..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          <button onclick="clearSearch()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg font-medium transition">Limpiar</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tabla Única Integrada -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      
+      <!-- Pestañas -->
+      <div class="flex border-b border-slate-200 bg-slate-50 px-4 pt-2 overflow-x-auto">
+        <button onclick="switchTab('DATA_PF_WIN')" id="tab-DATA_PF_WIN" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 tab-active whitespace-nowrap">
+          <i data-lucide="database" class="w-4 h-4 text-brand-600"></i>
+          <span>DATA_PF_WIN (General)</span>
+          <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-DATA_PF_WIN">0</span>
+        </button>
+        
+        <button onclick="switchTab('REPROGRAMA')" id="tab-REPROGRAMA" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="calendar-clock" class="w-4 h-4 text-amber-500"></i>
+          <span>REPROGRAMA</span>
+          <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-REPROGRAMA">0</span>
+        </button>
+
+        <button onclick="switchTab('CANCELADO')" id="tab-CANCELADO" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>
+          <span>CANCELADO / DESESTIMADOS</span>
+          <span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-CANCELADO">0</span>
+        </button>
+      </div>
+
+      <!-- Tabla de Datos -->
+      <div class="p-0 overflow-x-auto custom-scrollbar max-h-[600px]">
+        <table id="mainTable" class="w-full text-left border-collapse text-[11px]">
+          <thead>
+            <tr id="tableHeaders" class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-10"></tr>
+          </thead>
+          <tbody id="dataTableBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+
+        <div id="emptyState" class="p-12 text-center text-slate-400 hidden">
+          <i data-lucide="inbox" class="w-12 h-12 mx-auto text-slate-300 mb-2"></i>
+          <p class="font-medium text-slate-600 text-sm">No hay registros para mostrar</p>
+          <p class="text-xs text-slate-400 mt-1">Sube tu archivo CSV o sincroniza con Google Sheets.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: Gestión de Estado -->
+  <div id="modalEstado" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+      <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="edit-3" class="w-5 h-5 text-brand-400"></i>
+          <h3 class="font-bold text-sm">Gestión & Actualización de Estado</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="formUpdateEstado" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="modalIDoperacion">
+
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+          <div class="flex justify-between items-center text-xs text-slate-500"><span>Cliente:</span><span id="modalClienteNombre" class="font-bold text-slate-800"></span></div>
+          <div class="flex justify-between items-center text-xs text-slate-500"><span>DNI:</span><span id="modalClienteDNI" class="font-bold text-slate-800"></span></div>
+          <div class="flex justify-between items-center text-xs text-slate-500"><span>ID Operación:</span><span id="modalIDopLabel" class="font-mono text-brand-600 font-semibold"></span></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nuevo Estado *</label>
+          <select id="modalEstadoSelect" onchange="toggleReprogramaFields()" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 font-semibold uppercase">
+            <option value="EN PROCESO">EN PROCESO</option>
+            <option value="REPROGRAMA">REPROGRAMA</option>
+            <option value="PROGRAMADO">PROGRAMADO</option>
+            <option value="EN CAMINO">EN CAMINO</option>
+            <option value="COORDINADO">COORDINADO</option>
+            <option value="FINALIZADO">FINALIZADO</option>
+            <option value="AUSENTE">AUSENTE</option>
+            <option value="CANCELADO">CANCELADO</option>
+            <option value="TRANSFERIR">TRANSFERIR</option>
+            <option value="PLANTA">PLANTA</option>
+            <option value="ZONA PELIGROSA">ZONA PELIGROSA</option>
+            <option value="DUPLICADO">DUPLICADO</option>
+            <option value="REITERATIVO">REITERATIVO</option>
+            <option value="RESCATE">RESCATE</option>
+            <option value="SIN FACILIDADES TÉCNICAS">SIN FACILIDADES TÉCNICAS</option>
+          </select>
+        </div>
+
+        <div id="reprogramaSection" class="space-y-3 bg-amber-50/60 p-3.5 rounded-lg border border-amber-200 hidden">
+          <p class="text-[11px] font-bold text-amber-800 flex items-center space-x-1">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i><span>Detalles de Reprogramación</span>
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-700 mb-1">Fecha Reprogramada</label>
+              <input type="date" id="modalFechaReprograma" class="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-700 mb-1">Tramo (Horario)</label>
+              <select id="modalTramo" class="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white font-semibold">
+                <option value="08AM-12PM">08AM-12PM</option>
+                <option value="12PM-16PM">12PM-16PM</option>
+                <option value="16PM-20PM">16PM-20PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Técnico / Cuadrilla</label>
+          <input type="text" id="modalTecnico" placeholder="Ej: TE007 EFRAÍN TITO HUAMAN" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Observaciones</label>
+          <textarea id="modalObservaciones" rows="2" placeholder="Observaciones o motivo..." class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase"></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg">Cancelar</button>
+          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center space-x-1">
+            <i data-lucide="save" class="w-4 h-4"></i><span>Guardar y Sincronizar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let allRecords = [];
+    let allDetectedColumns = [];
+    let activeTab = 'DATA_PF_WIN';
+
+    // Se incluye la nueva columna virtual "Agencia"
+    const VISIBLE_COLS = [
+      "valida_cod_pedido", "nom_cliente", "dni_cliente", "direccion_cliente", 
+      "Distrito", "telefono", "telefono_alternativo", "Estado", "Cuadrilla", "Tramo_Atencio", "Tiempo_Transcurrido", "Agencia", "Observaciones"
+    ];
+
+    const DATE_COLS = [
+      "Datetime", "F_Asignacion", "Fecha_Gestion", "fecha_registro", 
+      "fecha_programacion", "H_Progra", "H_Inicio", "H_Proceso", "H_Cierre", "H_Cancel"
+    ];
+
+    const CANCELADO_STATES = [
+      "CANCELADO", "AUSENTE", "TRANSFERIR", "PLANTA", 
+      "ZONA PELIGROSA", "DUPLICADO", "REITERATIVO", "RESCATE", 
+      "SIN FACILIDADES TÉCNICAS", "SIN FACILIDADES TECNICAS"
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      startLiveClock();
+      fetchFromGoogleSheets();
+
+      setInterval(() => {
+        if (allRecords.length > 0) {
+          filterData();
+        }
+      }, 5000);
+    });
+
+    function startLiveClock() {
+      const clock = document.getElementById('liveClock');
+      setInterval(() => {
+        const d = new Date();
+        if (clock) clock.innerText = d.toLocaleTimeString('es-PE', { hour12: false });
+      }, 1000);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toastNotification');
+      if (toast) {
+        const msgEl = document.getElementById('toastMessage');
+        if (msgEl) msgEl.innerText = message;
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => {
+          toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3500);
+      }
+    }
+
+    function parseFechaPeru(str) {
+      if (!str) return null;
+      str = String(str).trim();
+      if (!str) return null;
+      const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (!m) return null;
+      const [, d, mo, y, hh, mm, ss] = m;
+      const dt = new Date(
+        parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(d, 10),
+        hh ? parseInt(hh, 10) : 0, mm ? parseInt(mm, 10) : 0, ss ? parseInt(ss, 10) : 0
+      );
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function formatoHM(minutos) {
+      minutos = Math.max(0, Math.round(minutos));
+      const h = Math.floor(minutos / 60), m = minutos % 60;
+      return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+    }
+
+    function calculateDilacion(row) {
+      const estado = String(row.Estado || row.estado || '').toUpperCase().trim();
+      
+      if (estado !== 'EN CAMINO' && estado !== 'EN PROCESO') {
+        return { texto: '-', nivel: 'inactivo', badgeCls: 'bg-slate-50 text-slate-400 border-slate-200' };
+      }
+
+      const hInicio = parseFechaPeru(row.H_Inicio);
+      const hProceso = parseFechaPeru(row.H_Proceso);
+
+      let fechaRef = null;
+      if (estado === 'EN CAMINO') {
+        if (hInicio && hProceso) fechaRef = hProceso >= hInicio ? hProceso : hInicio;
+        else fechaRef = hProceso || hInicio;
+      } else if (estado === 'EN PROCESO') {
+        fechaRef = hProceso || hInicio;
+      }
+
+      if (!fechaRef) {
+        return { texto: 'Sin Marca H', nivel: 'normal', badgeCls: 'bg-slate-100 text-slate-400 border-slate-200' };
+      }
+
+      const ahora = new Date();
+      const deltaMin = (ahora - fechaRef) / 60000;
+      const transcurridoTexto = formatoHM(deltaMin);
+
+      const [umbralAmarillo, umbralRojo] = estado === 'EN CAMINO' ? [50, 60] : [60, 120];
+
+      if (deltaMin >= umbralRojo) {
+        return { 
+          texto: `🚨 ${transcurridoTexto}`, 
+          nivel: 'rojo', 
+          badgeCls: 'bg-rose-100 text-rose-800 border-rose-400 font-extrabold alert-rojo' 
+        };
+      } else if (deltaMin >= umbralAmarillo) {
+        return { 
+          texto: `⚠️ ${transcurridoTexto}`, 
+          nivel: 'amarillo', 
+          badgeCls: 'bg-amber-100 text-amber-800 border-amber-400 font-bold' 
+        };
+      } else {
+        return { 
+          texto: `⏱️ ${transcurridoTexto}`, 
+          nivel: 'normal', 
+          badgeCls: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-medium' 
+        };
+      }
+    }
+
+    // Lógica para detectar si la Agencia corresponde a venta Tecsycom
+    function getAgenciaBadge(row) {
+      const agencia = String(row.Agencia || row.agencia || '').toUpperCase().trim();
+      if (agencia.includes("INVERSIONES TECSYCOM") || agencia.includes("TECSYCOM")) {
+        return `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 inline-flex items-center space-x-1 whitespace-nowrap shadow-xs">
+          <i data-lucide="shopping-cart" class="w-3 h-3 text-indigo-600"></i>
+          <span>VENTA TECSYCOM</span>
+        </span>`;
+      }
+      return `<span class="text-slate-400 text-[11px]">-</span>`;
+    }
+
+    function formatCleanDate(val) {
+      if (!val) return '';
+      let str = String(val).trim();
+      if (str.includes('T') || str.includes('Z')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          const hours = String(d.getHours()).padStart(2, '0');
+          const mins = String(d.getMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year} ${hours}:${mins}`;
+        }
+      }
+      return str;
+    }
+
+    function normalizeTramo(val) {
+      if (!val) return '';
+      let s = String(val).trim();
+      if (s === '08:00' || s === '08:00:00') return '08AM-12PM';
+      if (s === '12:00' || s === '12:00:00') return '12PM-16PM';
+      if (s === '16:00' || s === '16:00:00') return '16PM-20PM';
+      return s;
+    }
+
+    function updateVirtualObservation(idOp, value) {
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (rec) {
+        rec.Observaciones = String(value).toUpperCase();
+        let virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+        virtualObs[idOp] = rec.Observaciones;
+        localStorage.setItem('win_virtual_obs', JSON.stringify(virtualObs));
+        syncToGoogleSheets(allRecords);
+      }
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      setSyncStatus("loading", "Procesando archivo...");
+      const reader = new FileReader();
+
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+          if (!rawJson || rawJson.length === 0) {
+            alert("El archivo está vacío.");
+            setSyncStatus("error", "Archivo Vacío");
+            return;
+          }
+
+          allDetectedColumns = Object.keys(rawJson[0]);
+          if (!allDetectedColumns.includes("Observaciones")) allDetectedColumns.push("Observaciones");
+
+          processIncomingData(rawJson);
+        } catch (err) {
+          alert("Error procesando archivo: " + err.message);
+          setSyncStatus("error", "Error formato");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function processIncomingData(rows) {
+      const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+
+      rows.forEach(row => {
+        const idOp = String(row["IDoperacion"] || row["idoperacion"] || "").trim();
+        if (!idOp) return;
+
+        if (virtualObs[idOp] !== undefined && virtualObs[idOp] !== "") {
+          row["Observaciones"] = virtualObs[idOp];
+        } else if (row["Observaciones"] === undefined) {
+          row["Observaciones"] = "";
+        }
+
+        DATE_COLS.forEach(c => {
+          if (row[c]) row[c] = formatCleanDate(row[c]);
+        });
+
+        if (row["Tramo_Atencio"]) row["Tramo_Atencio"] = normalizeTramo(row["Tramo_Atencio"]);
+        if (row["horario"] && !row["Tramo_Atencio"]) row["Tramo_Atencio"] = normalizeTramo(row["horario"]);
+
+        if (row["Estado"]) row["Estado"] = String(row["Estado"]).toUpperCase().trim();
+        if (row["estado"]) row["estado"] = String(row["estado"]).toUpperCase().trim();
+        if (row["Observaciones"]) row["Observaciones"] = String(row["Observaciones"]).toUpperCase();
+
+        const existingIndex = allRecords.findIndex(r => String(r.IDoperacion || r.idoperacion).trim() === idOp);
+
+        if (existingIndex !== -1) {
+          const currentObs = allRecords[existingIndex].Observaciones;
+          allRecords[existingIndex] = { ...allRecords[existingIndex], ...row };
+          if (currentObs && (!row["Observaciones"] || row["Observaciones"] === "")) {
+            allRecords[existingIndex].Observaciones = currentObs;
+          }
+        } else {
+          allRecords.push(row);
+        }
+      });
+
+      renderAll();
+      syncToGoogleSheets(allRecords);
+      showToast("Archivo procesado con monitoreo comercial activado.");
+    }
+
+    function exportToExcel() {
+      if (allRecords.length === 0) {
+        alert("No hay registros para exportar.");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(allRecords);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "DATA_PF_WIN");
+      XLSX.writeFile(wb, `DATA_PF_WIN_Completo_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function fetchFromGoogleSheets() {
+      setSyncStatus("loading", "Sincronizando con Sheet...");
+      fetch(SCRIPT_WEB_APP_URL, { redirect: "follow" })
+        .then(res => {
+          if (!res.ok) throw new Error("Error HTTP: " + res.status);
+          return res.json();
+        })
+        .then(data => {
+          const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+          if (Array.isArray(data) && data.length > 0) {
+            allRecords = data.map(item => {
+              const idOp = String(item.IDoperacion || item.idoperacion || "").trim();
+              if (virtualObs[idOp] !== undefined && virtualObs[idOp] !== "") {
+                item.Observaciones = virtualObs[idOp];
+              }
+              if (item.Estado) item.Estado = String(item.Estado).toUpperCase().trim();
+              if (item.estado) item.estado = String(item.estado).toUpperCase().trim();
+              if (item.Observaciones) item.Observaciones = String(item.Observaciones).toUpperCase();
+              if (item.Tramo_Atencio) item.Tramo_Atencio = normalizeTramo(item.Tramo_Atencio);
+              DATE_COLS.forEach(c => { if (item[c]) item[c] = formatCleanDate(item[c]); });
+              return item;
+            });
+            allDetectedColumns = Object.keys(data[0]);
+            if (!allDetectedColumns.includes("Observaciones")) allDetectedColumns.push("Observaciones");
+            setSyncStatus("success", "Sincronizado");
+          } else {
+            setSyncStatus("success", "Sheet Vacío");
+            allRecords = [];
+          }
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Error sincronizando:", err);
+          setSyncStatus("error", "Error de conexión");
+          renderAll();
+        });
+    }
+
+    function syncToGoogleSheets(records) {
+      setSyncStatus("loading", "Guardando Cloud...");
+      fetch(SCRIPT_WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records: records })
+      })
+      .then(() => setSyncStatus("success", "Guardado"))
+      .catch(err => {
+        console.error(err);
+        setSyncStatus("error", "Error guardando");
+      });
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('tab-active'));
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      if (activeBtn) activeBtn.classList.add('tab-active');
+      filterData();
+    }
+
+    function renderAll() {
+      updateBadges();
+      filterData();
+    }
+
+    function updateBadges() {
+      const badgeGen = document.getElementById('badge-DATA_PF_WIN');
+      if (badgeGen) badgeGen.innerText = allRecords.length;
+
+      const getEst = (r) => String(r.Estado || r.estado || '').toUpperCase().trim();
+      const reprogramas = allRecords.filter(r => getEst(r) === 'REPROGRAMA');
+      const cancelados = allRecords.filter(r => CANCELADO_STATES.includes(getEst(r)));
+
+      const badgeRep = document.getElementById('badge-REPROGRAMA');
+      if (badgeRep) badgeRep.innerText = reprogramas.length;
+
+      const badgeCan = document.getElementById('badge-CANCELADO');
+      if (badgeCan) badgeCan.innerText = cancelados.length;
+
+      const cntProc = document.getElementById('cntProceso');
+      if (cntProc) cntProc.innerText = allRecords.filter(r => getEst(r) === 'EN PROCESO').length;
+
+      const cntCam = document.getElementById('cntCamino');
+      if (cntCam) cntCam.innerText = allRecords.filter(r => getEst(r) === 'EN CAMINO').length;
+
+      const cntFin = document.getElementById('cntFinalizado');
+      if (cntFin) cntFin.innerText = allRecords.filter(r => getEst(r) === 'FINALIZADO').length;
+
+      let cntAlt = 0;
+      let cntProx = 0;
+      allRecords.forEach(r => {
+        const dil = calculateDilacion(r);
+        if (dil.nivel === 'rojo') cntAlt++;
+        else if (dil.nivel === 'amarillo') cntProx++;
+      });
+
+      const cntAltEl = document.getElementById('cntAlertado');
+      if (cntAltEl) cntAltEl.innerText = cntAlt;
+
+      const cntProxEl = document.getElementById('cntProximo');
+      if (cntProxEl) cntProxEl.innerText = cntProx;
+
+      const totBadge = document.getElementById('totalRecordsBadge');
+      if (totBadge) totBadge.innerText = `Total: ${allRecords.length}`;
+    }
+
+    function filterData() {
+      const searchInput = document.getElementById('searchInput');
+      const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      let list = [];
+
+      const getEst = (r) => String(r.Estado || r.estado || '').toUpperCase().trim();
+
+      if (activeTab === 'DATA_PF_WIN') list = [...allRecords];
+      else if (activeTab === 'REPROGRAMA') list = allRecords.filter(r => getEst(r) === 'REPROGRAMA');
+      else if (activeTab === 'CANCELADO') list = allRecords.filter(r => CANCELADO_STATES.includes(getEst(r)));
+
+      if (search) {
+        list = list.filter(row => JSON.stringify(row).toLowerCase().includes(search));
+      }
+
+      const tramoOrder = { "08AM-12PM": 1, "12PM-16PM": 2, "16PM-20PM": 3 };
+      list.sort((a, b) => {
+        let tA = String(a.Tramo_Atencio || '').toUpperCase().trim();
+        let tB = String(b.Tramo_Atencio || '').toUpperCase().trim();
+        let valA = tramoOrder[tA] || 99;
+        let valB = tramoOrder[tB] || 99;
+        return valA - valB;
+      });
+
+      renderTable(list);
+    }
+
+    function getTramoBadge(tramo) {
+      const t = String(tramo || '').toUpperCase().trim();
+      let cls = "bg-slate-100 text-slate-800 border-slate-200";
+      if (t === '08AM-12PM') cls = "bg-sky-100 text-sky-800 border-sky-300";
+      else if (t === '12PM-16PM') cls = "bg-amber-100 text-amber-800 border-amber-300";
+      else if (t === '16PM-20PM') cls = "bg-indigo-100 text-indigo-800 border-indigo-300";
+
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls} inline-block whitespace-nowrap">${t || 'S/D'}</span>`;
+    }
+
+    function getEstadoBadge(estado) {
+      const est = String(estado || '').toUpperCase().trim();
+      let cls = "bg-slate-100 text-slate-800 border-slate-200";
+      
+      if (est === 'EN CAMINO') cls = "bg-cyan-100 text-cyan-800 border-cyan-300";
+      else if (est === 'EN PROCESO') cls = "bg-purple-100 text-purple-800 border-purple-300";
+      else if (est === 'PROGRAMADO') cls = "bg-amber-100 text-amber-800 border-amber-300";
+      else if (est === 'REPROGRAMA') cls = "bg-pink-100 text-pink-800 border-pink-300";
+      else if (est === 'FINALIZADO') cls = "bg-emerald-100 text-emerald-800 border-emerald-300";
+      else if (est === 'COORDINADO') cls = "bg-teal-100 text-teal-800 border-teal-300";
+      else if (est === 'AUSENTE') cls = "bg-rose-100 text-rose-800 border-rose-300";
+      else if (est === 'CANCELADO') cls = "bg-rose-100 text-rose-800 border-rose-300";
+      else if (est === 'TRANSFERIR') cls = "bg-violet-100 text-violet-800 border-violet-300";
+      else if (est === 'PLANTA') cls = "bg-blue-100 text-blue-800 border-blue-300";
+      else if (est === 'ZONA PELIGROSA') cls = "bg-red-100 text-red-900 border-red-300 font-extrabold";
+      else if (est === 'RESCATE') cls = "bg-yellow-100 text-yellow-800 border-yellow-300";
+      else if (CANCELADO_STATES.includes(est)) cls = "bg-rose-200 text-rose-900 border-rose-400";
+
+      return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls} inline-block whitespace-nowrap">${est || 'S/D'}</span>`;
+    }
+
+    function renderTable(records) {
+      const thead = document.getElementById('tableHeaders');
+      const tbody = document.getElementById('dataTableBody');
+      const empty = document.getElementById('emptyState');
+      if (!tbody || !thead) return;
+
+      tbody.innerHTML = "";
+      thead.innerHTML = "";
+
+      if (records.length === 0) {
+        if (empty) empty.classList.remove('hidden');
+        return;
+      }
+      if (empty) empty.classList.add('hidden');
+
+      VISIBLE_COLS.forEach(col => {
+        const th = document.createElement('th');
+        th.className = "p-3 uppercase text-[10px] tracking-wider relative";
+        th.innerText = col.replace('_', ' ');
+        
+        const resizer = document.createElement('div');
+        resizer.className = 'resizer';
+        th.appendChild(resizer);
+        makeResizable(th, resizer);
+
+        thead.appendChild(th);
+      });
+
+      const thAcc = document.createElement('th');
+      thAcc.className = "p-3 text-center uppercase text-[10px]";
+      thAcc.innerText = "Accion";
+      thead.appendChild(thAcc);
+
+      records.forEach(row => {
+        const tr = document.createElement('tr');
+        const dil = calculateDilacion(row);
+
+        if (dil.nivel === 'rojo') {
+          tr.className = "bg-rose-50/70 hover:bg-rose-100/80 transition border-b border-rose-200";
+        } else if (dil.nivel === 'amarillo') {
+          tr.className = "bg-amber-50/50 hover:bg-amber-100/60 transition border-b border-amber-200";
+        } else {
+          tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+        }
+
+        const idOp = row["IDoperacion"] || row["idoperacion"] || "";
+
+        VISIBLE_COLS.forEach(col => {
+          const td = document.createElement('td');
+          td.className = "p-3 text-[11px] text-slate-700 truncate max-w-[200px]";
+
+          if (col === 'Estado') {
+            td.innerHTML = getEstadoBadge(row[col]);
+          } else if (col === 'Tramo_Atencio') {
+            td.innerHTML = getTramoBadge(row[col]);
+          } else if (col === 'Tiempo_Transcurrido') {
+            td.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] border ${dil.badgeCls} inline-block font-mono whitespace-nowrap">${dil.texto}</span>`;
+          } else if (col === 'Agencia') {
+            td.innerHTML = getAgenciaBadge(row);
+          } else if (col === 'Observaciones') {
+            td.innerHTML = `<input type="text" value="${row[col] !== undefined && row[col] !== null ? row[col] : ''}" 
+              onchange="updateVirtualObservation('${idOp}', this.value)" 
+              class="w-full bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-slate-300 focus:border-brand-500 rounded px-1.5 py-1 text-[11px] uppercase transition" 
+              placeholder="Añadir comentario...">`;
+          } else {
+            td.innerText = row[col] !== undefined && row[col] !== null ? row[col] : '-';
+          }
+          tr.appendChild(td);
+        });
+
+        const tdAcc = document.createElement('td');
+        tdAcc.className = "p-3 text-center";
+        tdAcc.innerHTML = `
+          <button onclick="openModalForEdit('${idOp}')" title="Modificar Estado" class="p-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg transition">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+        tr.appendChild(tdAcc);
+
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function makeResizable(th, resizer) {
+      let x = 0;
+      let w = 0;
+
+      resizer.addEventListener('mousedown', function(e) {
+        x = e.clientX;
+        w = th.offsetWidth;
+        resizer.classList.add('resizing');
+        document.addEventListener('mousemove', mouseMove);
+        document.addEventListener('mouseup', mouseUp);
+        e.preventDefault();
+      });
+
+      function mouseMove(e) {
+        const dx = e.clientX - x;
+        th.style.width = `${Math.max(60, w + dx)}px`;
+      }
+
+      function mouseUp() {
+        resizer.classList.remove('resizing');
+        document.removeEventListener('mousemove', mouseMove);
+        document.removeEventListener('mouseup', mouseUp);
+      }
+    }
+
+    function openModalForEdit(idOp) {
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (!rec) return;
+
+      const modalOp = document.getElementById('modalIDoperacion');
+      if (modalOp) modalOp.value = idOp;
+      
+      const modalLabel = document.getElementById('modalIDopLabel');
+      if (modalLabel) modalLabel.innerText = idOp;
+
+      const modalCli = document.getElementById('modalClienteNombre');
+      if (modalCli) modalCli.innerText = rec.nom_cliente || rec.Cliente || 'N/A';
+
+      const modalDni = document.getElementById('modalClienteDNI');
+      if (modalDni) modalDni.innerText = rec.dni_cliente || rec.dni || 'N/A';
+      
+      const modalEst = document.getElementById('modalEstadoSelect');
+      if (modalEst) modalEst.value = String(rec.Estado || rec.estado || 'EN PROCESO').toUpperCase().trim();
+
+      const modalTec = document.getElementById('modalTecnico');
+      if (modalTec) modalTec.value = String(rec.Cuadrilla || rec.Tecnico || '').toUpperCase();
+
+      const modalObs = document.getElementById('modalObservaciones');
+      if (modalObs) modalObs.value = String(rec.Observaciones || '').toUpperCase();
+
+      const modalTramo = document.getElementById('modalTramo');
+      if (modalTramo) modalTramo.value = normalizeTramo(rec.Tramo_Atencio || rec.horario || '08AM-12PM');
+
+      const modalFecha = document.getElementById('modalFechaReprograma');
+      if (modalFecha) modalFecha.value = rec.fecha_programacion || '';
+
+      toggleReprogramaFields();
+      const modalEstDiv = document.getElementById('modalEstado');
+      if (modalEstDiv) modalEstDiv.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('modalEstado');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function toggleReprogramaFields() {
+      const estSelect = document.getElementById('modalEstadoSelect');
+      const section = document.getElementById('reprogramaSection');
+      if (estSelect && section) {
+        if (estSelect.value === 'REPROGRAMA') section.classList.remove('hidden');
+        else section.classList.add('hidden');
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const idOpEl = document.getElementById('modalIDoperacion');
+      if (!idOpEl) return;
+      
+      const idOp = idOpEl.value;
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (!rec) return;
+
+      const estSelect = document.getElementById('modalEstadoSelect');
+      const nuevoEstado = estSelect ? estSelect.value : 'EN PROCESO';
+
+      rec.Estado = nuevoEstado;
+      if (rec.estado !== undefined) rec.estado = nuevoEstado;
+
+      const tecEl = document.getElementById('modalTecnico');
+      rec.Cuadrilla = tecEl ? String(tecEl.value).toUpperCase() : '';
+
+      const obsEl = document.getElementById('modalObservaciones');
+      rec.Observaciones = obsEl ? String(obsEl.value).toUpperCase() : '';
+
+      let virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+      virtualObs[idOp] = rec.Observaciones;
+      localStorage.setItem('win_virtual_obs', JSON.stringify(virtualObs));
+
+      const tramoEl = document.getElementById('modalTramo');
+      rec.Tramo_Atencio = tramoEl ? tramoEl.value : '';
+
+      const fechaEl = document.getElementById('modalFechaReprograma');
+      rec.fecha_programacion = fechaEl ? fechaEl.value : '';
+
+      closeModal();
+      renderAll();
+      syncToGoogleSheets(allRecords);
+
+      showToast(`Registro [${idOp}] actualizado y observaciones guardadas.`);
+    }
+
+    function clearSearch() {
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) searchInput.value = "";
+      filterData();
+    }
+
+    function setSyncStatus(state, text) {
+      const dot = document.getElementById('syncDot');
+      const txt = document.getElementById('syncText');
+      if (txt) txt.innerText = text;
+
+      if (dot) {
+        if (state === 'loading') {
+          dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+        } else if (state === 'success') {
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        } else {
+          dot.className = "w-2 h-2 rounded-full bg-rose-500";
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -6,7 +6,9 @@
   <title>Sistema de Control y Gestión de Campo - DATA_PF_WIN</title>
   
   <!-- Favicon / Ícono del Sistema -->
-  <link rel="icon" type="image/svg+xml" href="https://api.iconify.design/lucide:store.svg?color=%230284c7">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230284c7'/%3E%3Crect x='17' y='15' width='30' height='38' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3Crect x='24' y='9' width='16' height='10' rx='3' fill='white'/%3E%3Cpath d='M25 35l6 6 11-13' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230284c7'/%3E%3Crect x='17' y='15' width='30' height='38' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3Crect x='24' y='9' width='16' height='10' rx='3' fill='white'/%3E%3Cpath d='M25 35l6 6 11-13' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0f172a">
 
   <!-- Fonts & Tailwind CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -37,16 +39,43 @@
     .tab-active { border-bottom: 3px solid #0284c7; color: #0284c7; font-weight: 700; background-color: #ffffff; }
     table { min-width: 1400px; border-collapse: collapse; }
     th { position: relative; user-select: none; }
+    /* Barra de encabezados de la tabla: fondo naranja y texto blanco */
+    #mainTable thead tr, #mainTable thead th {
+      background-color: #FF5A0A !important;
+      color: #ffffff !important;
+    }
+    #mainTable thead th { border-right: 1px solid rgba(255,255,255,0.25); }
+    #mainTable thead th:last-child { border-right: none; }
+    #mainTable thead .resizer:hover, #mainTable thead .resizing { background-color: #ffffff; }
     .resizer {
       position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
       cursor: col-resize; user-select: none; touch-action: none;
     }
     .resizer:hover, .resizing { background-color: #0284c7; }
+    
     @keyframes pulse-alert {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
     .alert-rojo { animation: pulse-alert 1.5s infinite; }
+
+    /* Animación para el Recuadro Rojo Parpadeante de DNI Duplicado */
+    @keyframes duplicate-border-pulse {
+      0%, 100% {
+        outline: 3px solid #ef4444;
+        box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.4);
+      }
+      50% {
+        outline: 3px solid #7f1d1d;
+        box-shadow: inset 0 0 2px rgba(127, 29, 29, 0.2);
+      }
+    }
+    .row-duplicate-alert {
+      animation: duplicate-border-pulse 1s infinite !important;
+      outline-offset: -3px;
+      position: relative;
+      z-index: 5;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col relative">
@@ -55,10 +84,21 @@
     const SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx0C6hWh7qLFsQH1jy6afj3evZ4qVb6Qb4R75aOz8qsyRNnBz6yETKxCinLrMt_E0kqlA/exec";
   </script>
 
+  <!-- Datalist con Lista Frecuente de Técnicos -->
+  <datalist id="listaTecnicos">
+    <option value="TE052 JOSEP ROBERTO FABIAN POMAZONGO"></option>
+    <option value="TE007 EFRAÍN TITO HUAMAN"></option>
+    <option value="TE047 MANUEL MARTIN JOEL YERSON"></option>
+    <option value="TE023 EDISON PAGAN ATENCIO"></option>
+    <option value="TE060 JHON ALEXANDER JAIMES CASTILLO"></option>
+    <option value="TE028 JUAN CARLOS ALBAN SANDOVAL"></option>
+    <option value="TE026 OMAR RUBENS PALOMINO GASPAR"></option>
+  </datalist>
+
   <!-- Notificación Toast Popup -->
   <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-3">
-    <div class="p-1 bg-emerald-500 rounded-full text-white">
-      <i data-lucide="check" class="w-4 h-4"></i>
+    <div class="p-1 bg-emerald-500 rounded-full text-white" id="toastIconContainer">
+      <i data-lucide="check" class="w-4 h-4" id="toastIcon"></i>
     </div>
     <div>
       <p class="text-xs font-bold" id="toastTitle">¡Guardado Exitosamente!</p>
@@ -68,10 +108,10 @@
 
   <!-- Header Principal -->
   <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center space-x-3">
         <div class="p-2 bg-brand-500 rounded-lg text-white">
-          <i data-lucide="store" class="w-6 h-6"></i>
+          <i data-lucide="clipboard-check" class="w-6 h-6"></i>
         </div>
         <div>
           <h1 class="text-lg font-bold tracking-tight">Control Operativo de Campo — DATA_PF_WIN</h1>
@@ -79,7 +119,19 @@
         </div>
       </div>
       
-      <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-3 flex-wrap">
+        <!-- Control de Alerta de Duplicidad -->
+        <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+          <label class="flex items-center cursor-pointer space-x-2">
+            <input type="checkbox" id="toggleDupAlert" class="sr-only peer" checked onchange="toggleDuplicateAlerts(this.checked)">
+            <div class="w-8 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-rose-600 relative"></div>
+            <span class="text-xs font-semibold text-slate-200 flex items-center gap-1">
+              <i data-lucide="bell" class="w-3.5 h-3.5 text-rose-400"></i>
+              <span class="hidden sm:inline">Alertas DNI Duplicado</span>
+            </span>
+          </label>
+        </div>
+
         <div class="text-xs font-mono bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-emerald-400 flex items-center space-x-2">
           <i data-lucide="clock" class="w-3.5 h-3.5"></i>
           <span id="liveClock">00:00:00</span>
@@ -113,7 +165,7 @@
             </h2>
           </div>
           <p class="text-[11px] text-slate-500 mb-3">
-            Carga tu archivo actualizado. Las órdenes se ordenarán automáticamente por estado.
+            Carga tu archivo actualizado. Se mantendrá la cuadrilla previa si la carga no contiene técnico.
           </p>
         </div>
 
@@ -142,30 +194,36 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 my-1">
-          <div class="bg-rose-50 p-2.5 rounded-lg border border-rose-200">
+        <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 my-1">
+          <div class="bg-rose-50 p-2 rounded-lg border border-rose-200">
             <p class="text-[10px] font-bold text-rose-800 uppercase flex items-center space-x-1">
-              <span class="w-2 h-2 rounded-full bg-rose-600"></span><span>Alertado (Excedido)</span>
+              <span class="w-2 h-2 rounded-full bg-rose-600"></span><span>Alertado</span>
             </p>
-            <p class="text-lg font-extrabold text-rose-600 mt-0.5" id="cntAlertado">0</p>
+            <p class="text-base font-extrabold text-rose-600 mt-0.5" id="cntAlertado">0</p>
           </div>
-          <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+          <div class="bg-amber-50 p-2 rounded-lg border border-amber-200">
             <p class="text-[10px] font-bold text-amber-800 uppercase flex items-center space-x-1">
               <span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Próximo Limite</span>
             </p>
-            <p class="text-lg font-extrabold text-amber-600 mt-0.5" id="cntProximo">0</p>
+            <p class="text-base font-extrabold text-amber-600 mt-0.5" id="cntProximo">0</p>
           </div>
-          <div class="bg-purple-50 p-2.5 rounded-lg border border-purple-100">
+          <div class="bg-purple-50 p-2 rounded-lg border border-purple-100">
             <p class="text-[10px] font-bold text-purple-700 uppercase">En Proceso</p>
-            <p class="text-lg font-extrabold text-purple-600 mt-0.5" id="cntProceso">0</p>
+            <p class="text-base font-extrabold text-purple-600 mt-0.5" id="cntProceso">0</p>
           </div>
-          <div class="bg-cyan-50 p-2.5 rounded-lg border border-cyan-100">
+          <div class="bg-cyan-50 p-2 rounded-lg border border-cyan-100">
             <p class="text-[10px] font-bold text-cyan-700 uppercase">En Camino</p>
-            <p class="text-lg font-extrabold text-cyan-600 mt-0.5" id="cntCamino">0</p>
+            <p class="text-base font-extrabold text-cyan-600 mt-0.5" id="cntCamino">0</p>
           </div>
-          <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-100">
+          <div class="bg-emerald-50 p-2 rounded-lg border border-emerald-100">
             <p class="text-[10px] font-bold text-emerald-700 uppercase">Finalizados</p>
-            <p class="text-lg font-extrabold text-emerald-600 mt-0.5" id="cntFinalizado">0</p>
+            <p class="text-base font-extrabold text-emerald-600 mt-0.5" id="cntFinalizado">0</p>
+          </div>
+          <div class="bg-red-50 p-2 rounded-lg border border-red-300">
+            <p class="text-[10px] font-bold text-red-800 uppercase flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3 h-3 text-red-600"></i><span>DNIs Duplicados</span>
+            </p>
+            <p class="text-base font-extrabold text-red-600 mt-0.5" id="cntDuplicados">0</p>
           </div>
         </div>
 
@@ -178,6 +236,78 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- Resultado de la Comparación (registros que cambiaron de estado) -->
+    <div id="panelComparacion" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-bold text-slate-800 uppercase flex items-center space-x-1.5">
+          <i data-lucide="list-checks" class="w-4 h-4 text-brand-500"></i>
+          <span>Resultado de la Comparación</span>
+          <span id="cmpHora" class="text-[10px] font-medium text-slate-400 normal-case ml-2"></span>
+        </h3>
+        <button onclick="document.getElementById('panelComparacion').classList.add('hidden')" title="Ocultar" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center">
+          <p class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Nuevos Registros</p>
+          <p id="cmpNuevos" class="text-xl font-black text-emerald-600">0</p>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-center">
+          <p class="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Cambiaron de Estado</p>
+          <p id="cmpCambios" class="text-xl font-black text-amber-600">0</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-center">
+          <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sin Modificación</p>
+          <p id="cmpSinCambio" class="text-xl font-black text-slate-600">0</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-56 overflow-y-auto">
+        <table class="w-full text-left text-xs text-slate-600" style="min-width:0">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200 sticky top-0">
+            <tr>
+              <th class="p-2">Acción</th>
+              <th class="p-2">IDoperacion</th>
+              <th class="p-2">Cliente</th>
+              <th class="p-2">Cuadrilla</th>
+              <th class="p-2">Estado Anterior</th>
+              <th class="p-2">Estado Nuevo</th>
+              <th class="p-2">Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="cmpBody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Órdenes sin Cuadrilla Asignada -->
+    <div id="panelSinCuadrilla" class="hidden bg-amber-50/60 rounded-xl border border-amber-200 p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2 pb-2 border-b border-amber-200/60">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 bg-amber-500 text-white rounded-md"><i data-lucide="user-x" class="w-3.5 h-3.5"></i></span>
+          <h3 class="text-sm font-bold text-amber-900">Órdenes sin Cuadrilla Asignada</h3>
+        </div>
+        <span id="badgeSinCuadrilla" class="bg-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">0 Órdenes</span>
+      </div>
+      <div class="overflow-x-auto border border-amber-200 rounded-lg max-h-56 overflow-y-auto bg-white">
+        <table class="w-full text-left text-xs" style="min-width:0">
+          <thead class="bg-amber-100/80 text-amber-900 font-bold border-b border-amber-200 sticky top-0 whitespace-nowrap">
+            <tr>
+              <th class="p-2">IDoperacion</th>
+              <th class="p-2">Estado</th>
+              <th class="p-2">DNI Cliente</th>
+              <th class="p-2">Nom Cliente</th>
+              <th class="p-2">Dirección Cliente</th>
+              <th class="p-2">Distrito</th>
+              <th class="p-2">Teléfono</th>
+              <th class="p-2">Cuadrilla</th>
+            </tr>
+          </thead>
+          <tbody id="tblSinCuadrilla" class="divide-y divide-amber-100"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Tabla Única Integrada -->
@@ -224,13 +354,13 @@
 
   </main>
 
-  <!-- MODAL: Gestión de Estado -->
+  <!-- MODAL: Gestión de Estado y Cuadrilla -->
   <div id="modalEstado" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
       <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
         <div class="flex items-center space-x-2">
           <i data-lucide="edit-3" class="w-5 h-5 text-brand-400"></i>
-          <h3 class="font-bold text-sm">Gestión & Actualización de Estado</h3>
+          <h3 class="font-bold text-sm">Gestión & Actualización de Registro</h3>
         </div>
         <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
@@ -285,9 +415,13 @@
           </div>
         </div>
 
+        <!-- Modificación 2: Selector / Datalist de Cuadrilla con lista desplegable destacada -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Técnico / Cuadrilla</label>
-          <input type="text" id="modalTecnico" placeholder="Ej: TE007 EFRAÍN TITO HUAMAN" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase">
+          <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between items-center">
+            <span>Técnico / Cuadrilla</span>
+            <span class="text-[10px] text-slate-400 font-normal">Sugerencias disponibles</span>
+          </label>
+          <input type="text" id="modalTecnico" list="listaTecnicos" placeholder="Seleccione o escriba el nombre del técnico..." class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none">
         </div>
 
         <div>
@@ -307,6 +441,21 @@
 
   <script>
     let allRecords = [];
+    let duplicateDnis = new Set();
+    let allowDuplicateAlerts = true; // Activar / Desactivar alerta de duplicidad
+
+    // Escapa texto para insertarlo seguro dentro de HTML/atributos
+    function esc(v) {
+      return String(v === undefined || v === null ? '' : v)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // Normaliza nombre de columna: sin tildes, minúsculas, sin espacios/guiones
+    function normKey(k) {
+      return String(k).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/[^a-z0-9]/g,'');
+    }
     let allDetectedColumns = [];
     let activeTab = 'DATA_PF_WIN';
 
@@ -332,9 +481,14 @@
       fetchFromGoogleSheets();
 
       setInterval(() => {
-        if (allRecords.length > 0) {
-          filterData();
-        }
+        if (allRecords.length === 0) return;
+        const ae = document.activeElement;
+        const editando = ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName) && ae.id !== 'searchInput';
+        const modal = document.getElementById('modalEstado');
+        const modalAbierto = modal && !modal.classList.contains('hidden');
+        if (editando || modalAbierto) return; // no borrar lo que el usuario está escribiendo
+        updateBadges();
+        filterData();
       }, 5000);
     });
 
@@ -346,19 +500,111 @@
       }, 1000);
     }
 
+    // Control para Activar/Desactivar Alerta Visual/Sonora de Duplicidad
+    function toggleDuplicateAlerts(enabled) {
+      allowDuplicateAlerts = enabled;
+      filterData();
+      showToast(
+        enabled ? "Alertas Activadas" : "Alertas Desactivadas",
+        enabled ? "Se mostrarán bordes parpadeantes para DNIs duplicados." : "Alertas visuales de duplicidad silenciadas.",
+        !enabled
+      );
+    }
+
+    // Alerta sonora sintetizada con Web Audio API por 5 segundos
+    function play5SecDuplicateSound() {
+      if (!allowDuplicateAlerts) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // Tono A5
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 5);
+
+        // Modulación tipo pulso de alarma
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.value = 4; // 4 pulsos por segundo
+        lfoGain.gain.value = 0.2;
+
+        lfo.connect(gain.gain);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 5); // desaparece a los 5s
+
+        osc.start();
+        lfo.start();
+
+        setTimeout(() => {
+          try {
+            osc.stop();
+            lfo.stop();
+            ctx.close();
+          } catch(e){}
+        }, 5000);
+      } catch (e) {
+        console.warn("Audio no permitido sin interacción previa de usuario.", e);
+      }
+    }
+
+    // Recalcular DNIs Duplicados en allRecords
+    function detectDuplicateDnis() {
+      const dniCounts = {};
+      const newDuplicates = new Set();
+
+      allRecords.forEach(r => {
+        const dni = String(r.dni_cliente || r.dni || '').trim();
+        if (dni && dni !== '-' && dni !== '0') {
+          dniCounts[dni] = (dniCounts[dni] || 0) + 1;
+        }
+      });
+
+      Object.keys(dniCounts).forEach(dni => {
+        if (dniCounts[dni] > 1) {
+          newDuplicates.add(dni);
+        }
+      });
+
+      const prevCount = duplicateDnis.size;
+      duplicateDnis = newDuplicates;
+
+      // Si se encontraron nuevos duplicados, reproducir sonido de 5 segundos
+      if (duplicateDnis.size > 0 && duplicateDnis.size > prevCount) {
+        play5SecDuplicateSound();
+      }
+
+      return duplicateDnis;
+    }
+
     function showToast(title, message, isAlert = false) {
       const toast = document.getElementById('toastNotification');
       if (toast) {
         const titleEl = document.getElementById('toastTitle');
         const msgEl = document.getElementById('toastMessage');
+        const iconEl = document.getElementById('toastIcon');
+        const iconBg = document.getElementById('toastIconContainer');
+
         if (titleEl) titleEl.innerText = title;
         if (msgEl) msgEl.innerText = message;
 
         if (isAlert) {
           toast.className = "fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out bg-rose-600 text-white px-4 py-3 rounded-xl shadow-2xl border border-rose-400 flex items-center space-x-3";
+          if (iconBg) iconBg.className = "p-1 bg-white rounded-full text-rose-600";
+          if (iconEl) iconEl.setAttribute('data-lucide', 'alert-triangle');
         } else {
           toast.className = "fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 ease-in-out bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-3";
+          if (iconBg) iconBg.className = "p-1 bg-emerald-500 rounded-full text-white";
+          if (iconEl) iconEl.setAttribute('data-lucide', 'check');
         }
+
+        lucide.createIcons();
 
         setTimeout(() => {
           toast.classList.add('translate-y-20', 'opacity-0');
@@ -515,19 +761,49 @@
             return;
           }
 
-          allDetectedColumns = Object.keys(rawJson[0]);
-          if (!allDetectedColumns.includes("Observaciones")) allDetectedColumns.push("Observaciones");
+          if (allDetectedColumns.length === 0) {
+            allDetectedColumns = Object.keys(rawJson[0]);
+            if (!allDetectedColumns.includes("Observaciones")) allDetectedColumns.push("Observaciones");
+          }
 
-          processIncomingData(rawJson);
+          const canon = {};
+          allDetectedColumns.forEach(c => { canon[normKey(c)] = c; });
+          const ignoradas = new Set();
+          const rows = rawJson.map(r => {
+            const o = {};
+            Object.keys(r).forEach(k => {
+              const target = canon[normKey(k)];
+              if (target) o[target] = r[k];
+              else ignoradas.add(k);
+            });
+            return o;
+          });
+
+          const tieneId = rows.some(r => String(r["IDoperacion"] || r["idoperacion"] || "").trim() !== "");
+          if (!tieneId) {
+            alert("No se encontró la columna IDoperacion en el archivo. No se modificó nada.");
+            setSyncStatus("error", "Sin IDoperacion");
+            return;
+          }
+
+          processIncomingData(rows, [...ignoradas]);
         } catch (err) {
           alert("Error procesando archivo: " + err.message);
           setSyncStatus("error", "Error formato");
         }
       };
       reader.readAsArrayBuffer(file);
+      e.target.value = ''; // permite volver a cargar el mismo archivo
     }
 
-    function processIncomingData(rows) {
+    // Auxiliar para detectar si la cuadrilla viene sin valor significativo
+    function isCuadrillaEmpty(val) {
+      if (val === undefined || val === null) return true;
+      const s = String(val).trim().toUpperCase();
+      return !s || s === 'VACIO' || s === 'VACÍO' || s === 'SIN CUADRILLA' || s === 'S/D' || s === 'ND' || s === '-';
+    }
+
+    function processIncomingData(rows, ignoradas = []) {
       const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
       
       const existingIds = new Set(allRecords.map(r => String(r.IDoperacion || r.idoperacion).trim()));
@@ -539,6 +815,10 @@
       });
 
       let nuevosAgregados = 0;
+      const cmp = { nuevos: [], cambios: [], sinCambio: 0 };
+      const getEstVal = (r) => String((r && (r.Estado || r.estado)) || '').toUpperCase().trim();
+      const getCuadVal = (r) => String((r && (r.Cuadrilla || r.cuadrilla)) || '').trim();
+      const nomCli = (r) => (r && (r.nom_cliente || r.Cliente)) || '';
 
       rows.forEach(row => {
         const idOp = String(row["IDoperacion"] || row["idoperacion"] || "").trim();
@@ -563,6 +843,30 @@
 
         const existingIndex = allRecords.findIndex(r => String(r.IDoperacion || r.idoperacion).trim() === idOp);
 
+        // Modificación 1: PRESERVAR CUADRILLA PREVIA SI LA NUEVA VIENE VACÍA / S/D
+        const incomingCuadrilla = getCuadVal(row);
+        if (existingIndex !== -1) {
+          const oldCuadrilla = getCuadVal(allRecords[existingIndex]);
+          if (isCuadrillaEmpty(incomingCuadrilla) && !isCuadrillaEmpty(oldCuadrilla)) {
+            row["Cuadrilla"] = oldCuadrilla;
+            if (row["cuadrilla"] !== undefined) row["cuadrilla"] = oldCuadrilla;
+          }
+        }
+
+        // Comparación de estado
+        const incEst = getEstVal(row);
+        if (existingIndex !== -1) {
+          const oldEst = getEstVal(allRecords[existingIndex]);
+          if (incEst && incEst !== oldEst) {
+            cmp.cambios.push({ key: idOp, cliente: nomCli(row) || nomCli(allRecords[existingIndex]),
+              cuadrilla: getCuadVal(row) || getCuadVal(allRecords[existingIndex]), oldEst: oldEst || 'SIN ESTADO', newEst: incEst });
+          } else {
+            cmp.sinCambio++;
+          }
+        } else {
+          cmp.nuevos.push({ key: idOp, cliente: nomCli(row), cuadrilla: getCuadVal(row), oldEst: 'NO REGISTRADO', newEst: incEst || 'PENDIENTE' });
+        }
+
         if (existingIndex !== -1) {
           const currentObs = allRecords[existingIndex].Observaciones;
           allRecords[existingIndex] = { ...allRecords[existingIndex], ...row };
@@ -584,14 +888,85 @@
         });
       }
 
+      // Órdenes del archivo sin cuadrilla asignada
+      const sinCuadrilla = rows.filter(r => {
+        const idv = String(r["IDoperacion"] || r["idoperacion"] || "").trim();
+        if (!idv) return false;
+        return isCuadrillaEmpty(getCuadVal(r));
+      });
+
+      detectDuplicateDnis();
       renderAll();
+      renderComparacion(cmp, sinCuadrilla);
       syncToGoogleSheets(allRecords);
 
       if (retiradosQuantum.length > 0) {
         showToast("⚠️ ALERTA QUANTUM", `${retiradosQuantum.length} orden(es) ya no figuran en el archivo: [${retiradosQuantum.join(', ')}]`, true);
       } else {
-        showToast("Sincronización Exitosa", `Archivo procesado. Se añadieron ${nuevosAgregados} registros nuevos.`);
+        const extra = ignoradas.length ? ` (${ignoradas.length} columna(s) ajena(s) ignorada(s): ${ignoradas.slice(0,3).join(', ')}${ignoradas.length>3?'…':''})` : '';
+        showToast("Sincronización Exitosa", `Datos actualizados, cuadrillas preservadas. Nuevos: ${nuevosAgregados}.${extra}`);
       }
+    }
+
+    const MAX_FILAS_PANEL = 500;
+
+    function renderComparacion(cmp, sinCuadrilla) {
+      const panel = document.getElementById('panelComparacion');
+      if (panel) {
+        document.getElementById('cmpNuevos').innerText = cmp.nuevos.length;
+        document.getElementById('cmpCambios').innerText = cmp.cambios.length;
+        document.getElementById('cmpSinCambio').innerText = cmp.sinCambio;
+        document.getElementById('cmpHora').innerText = 'Última carga: ' + new Date().toLocaleTimeString('es-PE', { hour12: false });
+
+        const lista = [
+          ...cmp.cambios.map(c => ({ ...c, tipo: 'CAMBIO' })),
+          ...cmp.nuevos.map(c => ({ ...c, tipo: 'NUEVO' }))
+        ];
+        const body = document.getElementById('cmpBody');
+        if (lista.length === 0) {
+          body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500 font-medium italic">No se detectaron diferencias: todos los estados coinciden con el sistema.</td></tr>';
+        } else {
+          body.innerHTML = lista.slice(0, MAX_FILAS_PANEL).map(it => {
+            const badge = it.tipo === 'NUEVO'
+              ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">NUEVO</span>'
+              : '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">CAMBIO ESTADO</span>';
+            return `<tr class="whitespace-nowrap">
+              <td class="p-2">${badge}</td>
+              <td class="p-2 font-mono font-medium text-slate-700">${esc(it.key)}</td>
+              <td class="p-2 truncate max-w-[220px]">${esc(it.cliente) || '-'}</td>
+              <td class="p-2">${esc(it.cuadrilla) || '-'}</td>
+              <td class="p-2">${it.tipo === 'NUEVO' ? '<span class="text-slate-400">' + esc(it.oldEst) + '</span>' : getEstadoBadge(it.oldEst)}</td>
+              <td class="p-2">${getEstadoBadge(it.newEst)}</td>
+              <td class="p-2 text-slate-500 text-[11px]">${it.tipo === 'NUEVO' ? 'Registro nuevo (no existía)' : 'Cambio de estado detectado'}</td>
+            </tr>`;
+          }).join('') + (lista.length > MAX_FILAS_PANEL
+            ? `<tr><td colspan="7" class="p-2 text-center text-[11px] text-slate-400">Mostrando ${MAX_FILAS_PANEL} de ${lista.length} registros</td></tr>` : '');
+        }
+        panel.classList.remove('hidden');
+      }
+
+      const pSin = document.getElementById('panelSinCuadrilla');
+      if (pSin) {
+        if (sinCuadrilla.length > 0) {
+          document.getElementById('badgeSinCuadrilla').innerText = `${sinCuadrilla.length} Órdenes`;
+          document.getElementById('tblSinCuadrilla').innerHTML = sinCuadrilla.slice(0, MAX_FILAS_PANEL).map(r => `
+            <tr class="hover:bg-amber-50/50 whitespace-nowrap">
+              <td class="p-2 font-mono text-slate-700">${esc(r.IDoperacion || r.idoperacion)}</td>
+              <td class="p-2">${getEstadoBadge(r.Estado || r.estado)}</td>
+              <td class="p-2 font-mono">${esc(r.dni_cliente || r.dni) || '-'}</td>
+              <td class="p-2 font-medium text-slate-800 truncate max-w-[200px]">${esc(r.nom_cliente || r.Cliente) || '-'}</td>
+              <td class="p-2 truncate max-w-[240px]" title="${esc(r.direccion_cliente)}">${esc(r.direccion_cliente) || '-'}</td>
+              <td class="p-2">${esc(r.Distrito || r.distrito) || '-'}</td>
+              <td class="p-2">${esc(r.telefono) || '-'}</td>
+              <td class="p-2"><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">SIN CUADRILLA</span></td>
+            </tr>`).join('') + (sinCuadrilla.length > MAX_FILAS_PANEL
+              ? `<tr><td colspan="8" class="p-2 text-center text-[11px] text-slate-400">Mostrando ${MAX_FILAS_PANEL} de ${sinCuadrilla.length} órdenes</td></tr>` : '');
+          pSin.classList.remove('hidden');
+        } else {
+          pSin.classList.add('hidden');
+        }
+      }
+      lucide.createIcons();
     }
 
     function exportToExcel() {
@@ -599,7 +974,7 @@
         alert("No hay registros para exportar.");
         return;
       }
-      const ws = XLSX.utils.json_to_sheet(allRecords);
+      const ws = XLSX.utils.json_to_sheet(allRecords, allDetectedColumns.length ? { header: allDetectedColumns } : undefined);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "DATA_PF_WIN");
       XLSX.writeFile(wb, `DATA_PF_WIN_Completo_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -634,11 +1009,13 @@
             setSyncStatus("success", "Sheet Vacío");
             allRecords = [];
           }
+          detectDuplicateDnis();
           renderAll();
         })
         .catch(err => {
           console.error("Error sincronizando:", err);
           setSyncStatus("error", "Error de conexión");
+          detectDuplicateDnis();
           renderAll();
         });
     }
@@ -708,6 +1085,9 @@
       const cntProxEl = document.getElementById('cntProximo');
       if (cntProxEl) cntProxEl.innerText = cntProx;
 
+      const cntDupEl = document.getElementById('cntDuplicados');
+      if (cntDupEl) cntDupEl.innerText = duplicateDnis.size;
+
       const totBadge = document.getElementById('totalRecordsBadge');
       if (totBadge) totBadge.innerText = `Total: ${allRecords.length}`;
     }
@@ -727,7 +1107,6 @@
         list = list.filter(row => JSON.stringify(row).toLowerCase().includes(search));
       }
 
-      // Ordenar por Estado alfabéticamente (y secundariamente por Tramo si el estado es igual)
       list.sort((a, b) => {
         let estA = String(a.Estado || a.estado || '').toUpperCase().trim();
         let estB = String(b.Estado || b.estado || '').toUpperCase().trim();
@@ -809,14 +1188,20 @@
       records.forEach(row => {
         const tr = document.createElement('tr');
         const dil = calculateDilacion(row);
+        const dniRow = String(row.dni_cliente || row.dni || '').trim();
+        const isDuplicate = allowDuplicateAlerts && duplicateDnis.has(dniRow);
 
-        if (dil.nivel === 'rojo') {
-          tr.className = "bg-rose-50/70 hover:bg-rose-100/80 transition border-b border-rose-200";
+        let rowClasses = "transition border-b ";
+        if (isDuplicate) {
+          rowClasses += "row-duplicate-alert bg-red-100/90 font-medium ";
+        } else if (dil.nivel === 'rojo') {
+          rowClasses += "bg-rose-50/70 hover:bg-rose-100/80 border-rose-200 ";
         } else if (dil.nivel === 'amarillo') {
-          tr.className = "bg-amber-50/50 hover:bg-amber-100/60 transition border-b border-amber-200";
+          rowClasses += "bg-amber-50/50 hover:bg-amber-100/60 border-amber-200 ";
         } else {
-          tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+          rowClasses += "hover:bg-slate-50 border-slate-100 ";
         }
+        tr.className = rowClasses;
 
         const idOp = row["IDoperacion"] || row["idoperacion"] || "";
 
@@ -824,7 +1209,16 @@
           const td = document.createElement('td');
           td.className = "p-3 text-[11px] text-slate-700 truncate max-w-[200px]";
 
-          if (col === 'Estado') {
+          if (col === 'dni_cliente') {
+            const val = row[col] || row['dni'] || '-';
+            if (isDuplicate) {
+              td.innerHTML = `<span class="bg-red-600 text-white font-extrabold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-sm">
+                <i data-lucide="alert-octagon" class="w-3 h-3"></i> ${esc(val)}
+              </span>`;
+            } else {
+              td.innerText = val;
+            }
+          } else if (col === 'Estado') {
             td.innerHTML = getEstadoBadge(row[col]);
           } else if (col === 'Tramo_Atencio') {
             td.innerHTML = getTramoBadge(row[col]);
@@ -833,8 +1227,8 @@
           } else if (col === 'Agencia') {
             td.innerHTML = getAgenciaBadge(row);
           } else if (col === 'Observaciones') {
-            td.innerHTML = `<input type="text" value="${row[col] !== undefined && row[col] !== null ? row[col] : ''}" 
-              onchange="updateVirtualObservation('${idOp}', this.value)" 
+            td.innerHTML = `<input type="text" value="${esc(row[col])}" data-id="${esc(idOp)}"
+              onchange="updateVirtualObservation(this.dataset.id, this.value)" 
               class="w-full bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-slate-300 focus:border-brand-500 rounded px-1.5 py-1 text-[11px] uppercase transition" 
               placeholder="Añadir comentario...">`;
           } else {
@@ -846,7 +1240,7 @@
         const tdAcc = document.createElement('td');
         tdAcc.className = "p-3 text-center";
         tdAcc.innerHTML = `
-          <button onclick="openModalForEdit('${idOp}')" title="Modificar Estado" class="p-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg transition">
+          <button data-id="${esc(idOp)}" onclick="openModalForEdit(this.dataset.id)" title="Modificar Estado / Técnico" class="p-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg transition">
             <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
           </button>
         `;
@@ -951,7 +1345,9 @@
       if (rec.estado !== undefined) rec.estado = nuevoEstado;
 
       const tecEl = document.getElementById('modalTecnico');
-      rec.Cuadrilla = tecEl ? String(tecEl.value).toUpperCase() : '';
+      const nuevaCuadrilla = tecEl ? String(tecEl.value).toUpperCase().trim() : '';
+      rec.Cuadrilla = nuevaCuadrilla;
+      if (rec.cuadrilla !== undefined) rec.cuadrilla = nuevaCuadrilla;
 
       const obsEl = document.getElementById('modalObservaciones');
       rec.Observaciones = obsEl ? String(obsEl.value).toUpperCase() : '';
@@ -974,10 +1370,11 @@
       }
 
       closeModal();
+      detectDuplicateDnis();
       renderAll();
       syncToGoogleSheets(allRecords);
 
-      showToast("Actualizado", `Registro [${idOp}] actualizado y reprogramado correctamente.`);
+      showToast("Actualizado", `Registro [${idOp}] actualizado correctamente.`);
     }
 
     function clearSearch() {

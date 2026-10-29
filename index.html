@@ -321,6 +321,12 @@
           <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-DATA_PF_WIN">0</span>
         </button>
         
+        <button onclick="switchTab('PENDIENTE')" id="tab-PENDIENTE" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="clock" class="w-4 h-4 text-sky-500"></i>
+          <span>PENDIENTES</span>
+          <span class="bg-sky-100 text-sky-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-PENDIENTE">0</span>
+        </button>
+
         <button onclick="switchTab('REPROGRAMA')" id="tab-REPROGRAMA" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
           <i data-lucide="calendar-clock" class="w-4 h-4 text-amber-500"></i>
           <span>REPROGRAMA</span>
@@ -559,6 +565,10 @@
       "CANCELADO", "AUSENTE", "TRANSFERIR", "PLANTA", 
       "ZONA PELIGROSA", "DUPLICADO", "REITERATIVO", "RESCATE", 
       "SIN FACILIDADES TÉCNICAS", "SIN FACILIDADES TECNICAS"
+    ];
+
+    const PENDIENTE_STATES = [
+      "EN CAMINO", "EN PROCESO", "PROGRAMADO", "COORDINADO"
     ];
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -1145,8 +1155,12 @@
       if (badgeGen) badgeGen.innerText = allRecords.length;
 
       const getEst = (r) => String(r.Estado || r.estado || '').toUpperCase().trim();
+      const pendientes = allRecords.filter(r => PENDIENTE_STATES.includes(getEst(r)));
       const reprogramas = allRecords.filter(r => getEst(r) === 'REPROGRAMA');
       const cancelados = allRecords.filter(r => CANCELADO_STATES.includes(getEst(r)));
+
+      const badgePen = document.getElementById('badge-PENDIENTE');
+      if (badgePen) badgePen.innerText = pendientes.length;
 
       const badgeRep = document.getElementById('badge-REPROGRAMA');
       if (badgeRep) badgeRep.innerText = reprogramas.length;
@@ -1192,6 +1206,7 @@
       const getEst = (r) => String(r.Estado || r.estado || '').toUpperCase().trim();
 
       if (activeTab === 'DATA_PF_WIN') list = [...allRecords];
+      else if (activeTab === 'PENDIENTE') list = allRecords.filter(r => PENDIENTE_STATES.includes(getEst(r)));
       else if (activeTab === 'REPROGRAMA') list = allRecords.filter(r => getEst(r) === 'REPROGRAMA');
       else if (activeTab === 'CANCELADO') list = allRecords.filter(r => CANCELADO_STATES.includes(getEst(r)));
 

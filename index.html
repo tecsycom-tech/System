@@ -415,13 +415,9 @@
           </div>
         </div>
 
-        <!-- Modificación 2: Selector / Datalist de Cuadrilla con lista desplegable destacada -->
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between items-center">
-            <span>Técnico / Cuadrilla</span>
-            <span class="text-[10px] text-slate-400 font-normal">Sugerencias disponibles</span>
-          </label>
-          <input type="text" id="modalTecnico" list="listaTecnicos" placeholder="Seleccione o escriba el nombre del técnico..." class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase font-medium focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Técnico / Cuadrilla</label>
+          <input type="text" id="modalTecnico" list="listaTecnicos" placeholder="Ej: TE007 EFRAÍN TITO HUAMAN" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase">
         </div>
 
         <div>
@@ -436,6 +432,95 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL POPUP: Detalle de Dilación / Tiempo Transcurrido -->
+  <div id="modalDilacion" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="clock" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="font-bold text-sm">Detalle Operativo & Estado de Tiempo</h3>
+        </div>
+        <button onclick="closeDilacionModal()" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <!-- Badge de Dilación Principal -->
+        <div id="popupDilacionHeader" class="p-4 rounded-xl border flex items-center justify-between">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tiempo Transcurrido / Dilación</p>
+            <p id="popupDilacionTiempo" class="text-2xl font-black mt-0.5">-</p>
+          </div>
+          <div id="popupDilacionEstadoBadge"></div>
+        </div>
+
+        <!-- Información General -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">ID Operación</span>
+            <span id="popupDilacionID" class="font-mono font-bold text-slate-800 text-sm">-</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">Cod. Pedido</span>
+            <span id="popupDilacionCodPedido" class="font-mono font-bold text-brand-600 text-sm">-</span>
+          </div>
+        </div>
+
+        <!-- Datos del Cliente y Ubicación -->
+        <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2 text-xs">
+          <p class="font-bold text-slate-700 text-[11px] uppercase flex items-center gap-1.5 border-b pb-1">
+            <i data-lucide="user" class="w-3.5 h-3.5 text-brand-500"></i> Información del Cliente
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <div><span class="text-slate-400">Cliente:</span> <p id="popupDilacionCliente" class="font-bold text-slate-800"></p></div>
+            <div><span class="text-slate-400">DNI Cliente:</span> <p id="popupDilacionDNI" class="font-mono font-bold text-slate-800"></p></div>
+            <div><span class="text-slate-400">Teléfono:</span> <p id="popupDilacionTel" class="font-bold text-slate-800"></p></div>
+            <div><span class="text-slate-400">Tel. Alternativo:</span> <p id="popupDilacionTelAlt" class="font-bold text-slate-800"></p></div>
+          </div>
+          <div class="pt-1"><span class="text-slate-400">Dirección:</span> <p id="popupDilacionDireccion" class="font-medium text-slate-800"></p></div>
+          <div><span class="text-slate-400">Distrito:</span> <p id="popupDilacionDistrito" class="font-semibold text-slate-800"></p></div>
+        </div>
+
+        <!-- Asignación Operativa -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">Cuadrilla / Técnico</span>
+            <span id="popupDilacionTecnico" class="font-bold text-slate-800 uppercase block mt-0.5">-</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">Tramo Atencion</span>
+            <div id="popupDilacionTramo" class="mt-0.5"></div>
+          </div>
+        </div>
+
+        <!-- Marcas de Tiempo -->
+        <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2 text-xs">
+          <p class="font-bold text-slate-700 text-[11px] uppercase flex items-center gap-1.5 border-b pb-1">
+            <i data-lucide="history" class="w-3.5 h-3.5 text-brand-500"></i> Marcas de Tiempo
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+            <div><span class="text-slate-400 text-[10px] block font-sans">H_Inicio:</span> <span id="popupDilacionHInicio" class="font-semibold text-slate-800">-</span></div>
+            <div><span class="text-slate-400 text-[10px] block font-sans">H_Proceso:</span> <span id="popupDilacionHProceso" class="font-semibold text-slate-800">-</span></div>
+            <div><span class="text-slate-400 text-[10px] block font-sans">F_Asignación:</span> <span id="popupDilacionFAsign" class="font-semibold text-slate-800">-</span></div>
+          </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="bg-amber-50/70 p-3 rounded-lg border border-amber-200 text-xs">
+          <span class="text-amber-800 font-bold block text-[10px] uppercase mb-0.5">Observaciones</span>
+          <p id="popupDilacionObs" class="text-slate-700 uppercase font-medium italic">-</p>
+        </div>
+      </div>
+
+      <div class="px-6 py-3 bg-slate-100 border-t border-slate-200 flex justify-end">
+        <button onclick="closeDilacionModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition">
+          Cerrar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1023,7 +1108,6 @@
         .catch(err => {
           console.error("Error sincronizando:", err);
           setSyncStatus("error", "Error de conexión");
-          detectDuplicateDnis();
           renderAll();
         });
     }
@@ -1079,6 +1163,9 @@
       const cntFin = document.getElementById('cntFinalizado');
       if (cntFin) cntFin.innerText = allRecords.filter(r => getEst(r) === 'FINALIZADO').length;
 
+      const cntDup = document.getElementById('cntDuplicados');
+      if (cntDup) cntDup.innerText = duplicateDnis.size;
+
       let cntAlt = 0;
       let cntProx = 0;
       allRecords.forEach(r => {
@@ -1092,9 +1179,6 @@
 
       const cntProxEl = document.getElementById('cntProximo');
       if (cntProxEl) cntProxEl.innerText = cntProx;
-
-      const cntDupEl = document.getElementById('cntDuplicados');
-      if (cntDupEl) cntDupEl.innerText = duplicateDnis.size;
 
       const totBadge = document.getElementById('totalRecordsBadge');
       if (totBadge) totBadge.innerText = `Total: ${allRecords.length}`;
@@ -1115,6 +1199,7 @@
         list = list.filter(row => JSON.stringify(row).toLowerCase().includes(search));
       }
 
+      // Ordenar por Estado alfabéticamente (y secundariamente por Tramo)
       list.sort((a, b) => {
         let estA = String(a.Estado || a.estado || '').toUpperCase().trim();
         let estB = String(b.Estado || b.estado || '').toUpperCase().trim();
@@ -1196,20 +1281,25 @@
       records.forEach(row => {
         const tr = document.createElement('tr');
         const dil = calculateDilacion(row);
-        const dniRow = String(row.dni_cliente || row.dni || '').trim();
-        const isDuplicate = allowDuplicateAlerts && duplicateDnis.has(dniRow);
+        const dni = String(row.dni_cliente || row.dni || '').trim();
+        const isDuplicate = duplicateDnis.has(dni);
 
-        let rowClasses = "transition border-b ";
-        if (isDuplicate) {
-          rowClasses += "row-duplicate-alert bg-red-100/90 font-medium ";
-        } else if (dil.nivel === 'rojo') {
-          rowClasses += "bg-rose-50/70 hover:bg-rose-100/80 border-rose-200 ";
+        // Clases según alerta de dilación y resaltado si hay duplicidad
+        let rowClasses = [];
+        if (dil.nivel === 'rojo') {
+          rowClasses.push("bg-rose-50/70 hover:bg-rose-100/80 transition border-b border-rose-200");
         } else if (dil.nivel === 'amarillo') {
-          rowClasses += "bg-amber-50/50 hover:bg-amber-100/60 border-amber-200 ";
+          rowClasses.push("bg-amber-50/50 hover:bg-amber-100/60 transition border-b border-amber-200");
         } else {
-          rowClasses += "hover:bg-slate-50 border-slate-100 ";
+          rowClasses.push("hover:bg-slate-50 transition border-b border-slate-100");
         }
-        tr.className = rowClasses;
+
+        // Modificación 3: Recuadro en rojo parpadeante si hay duplicidad de DNI
+        if (allowDuplicateAlerts && isDuplicate) {
+          rowClasses.push("row-duplicate-alert");
+        }
+
+        tr.className = rowClasses.join(' ');
 
         const idOp = row["IDoperacion"] || row["idoperacion"] || "";
 
@@ -1217,21 +1307,12 @@
           const td = document.createElement('td');
           td.className = "p-3 text-[11px] text-slate-700 truncate max-w-[200px]";
 
-          if (col === 'dni_cliente') {
-            const val = row[col] || row['dni'] || '-';
-            if (isDuplicate) {
-              td.innerHTML = `<span class="bg-red-600 text-white font-extrabold px-1.5 py-0.5 rounded text-[10px] inline-flex items-center gap-1 shadow-sm">
-                <i data-lucide="alert-octagon" class="w-3 h-3"></i> ${esc(val)}
-              </span>`;
-            } else {
-              td.innerText = val;
-            }
-          } else if (col === 'Estado') {
+          if (col === 'Estado') {
             td.innerHTML = getEstadoBadge(row[col]);
           } else if (col === 'Tramo_Atencio') {
             td.innerHTML = getTramoBadge(row[col]);
           } else if (col === 'Tiempo_Transcurrido') {
-            td.innerHTML = `<span class="px-2 py-0.5 rounded text-[10px] border ${dil.badgeCls} inline-block font-mono whitespace-nowrap">${dil.texto}</span>`;
+            td.innerHTML = `<button onclick="openDilacionModal('${esc(idOp)}')" type="button" title="Ver detalle de dilación" class="px-2 py-0.5 rounded text-[10px] border ${dil.badgeCls} inline-block font-mono whitespace-nowrap cursor-pointer hover:scale-105 transition-transform shadow-xs">${dil.texto}</button>`;
           } else if (col === 'Agencia') {
             td.innerHTML = getAgenciaBadge(row);
           } else if (col === 'Observaciones') {
@@ -1239,6 +1320,12 @@
               onchange="updateVirtualObservation(this.dataset.id, this.value)" 
               class="w-full bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-slate-300 focus:border-brand-500 rounded px-1.5 py-1 text-[11px] uppercase transition" 
               placeholder="Añadir comentario...">`;
+          } else if (col === 'dni_cliente') {
+            if (allowDuplicateAlerts && isDuplicate) {
+              td.innerHTML = `<span class="font-mono font-bold text-rose-700 flex items-center gap-1"><i data-lucide="alert-circle" class="w-3.5 h-3.5 text-rose-600 animate-pulse"></i>${esc(row[col])}</span>`;
+            } else {
+              td.innerText = row[col] !== undefined && row[col] !== null ? row[col] : '-';
+            }
           } else {
             td.innerText = row[col] !== undefined && row[col] !== null ? row[col] : '-';
           }
@@ -1260,6 +1347,7 @@
       lucide.createIcons();
     }
 
+    // Ajuste y redimensionamiento dinámico de las columnas de la tabla
     function makeResizable(th, resizer) {
       let x = 0;
       let w = 0;
@@ -1285,6 +1373,51 @@
       }
     }
 
+    // Modal Popup para ver detalles al hacer clic en TIEMPO_TRANSCURRIDO
+    function openDilacionModal(idOp) {
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (!rec) return;
+
+      const dil = calculateDilacion(rec);
+      
+      const header = document.getElementById('popupDilacionHeader');
+      if (header) {
+        if (dil.nivel === 'rojo') {
+          header.className = "p-4 rounded-xl border flex items-center justify-between bg-rose-50 border-rose-200 text-rose-900";
+        } else if (dil.nivel === 'amarillo') {
+          header.className = "p-4 rounded-xl border flex items-center justify-between bg-amber-50 border-amber-200 text-amber-900";
+        } else {
+          header.className = "p-4 rounded-xl border flex items-center justify-between bg-emerald-50 border-emerald-200 text-emerald-900";
+        }
+      }
+
+      document.getElementById('popupDilacionTiempo').innerText = dil.texto;
+      document.getElementById('popupDilacionEstadoBadge').innerHTML = getEstadoBadge(rec.Estado || rec.estado);
+      document.getElementById('popupDilacionID').innerText = idOp;
+      document.getElementById('popupDilacionCodPedido').innerText = rec.valida_cod_pedido || rec.cod_pedido || '-';
+      document.getElementById('popupDilacionCliente').innerText = rec.nom_cliente || rec.Cliente || '-';
+      document.getElementById('popupDilacionDNI').innerText = rec.dni_cliente || rec.dni || '-';
+      document.getElementById('popupDilacionTel').innerText = rec.telefono || '-';
+      document.getElementById('popupDilacionTelAlt').innerText = rec.telefono_alternativo || '-';
+      document.getElementById('popupDilacionDireccion').innerText = rec.direccion_cliente || '-';
+      document.getElementById('popupDilacionDistrito').innerText = rec.Distrito || rec.distrito || '-';
+      document.getElementById('popupDilacionTecnico').innerText = rec.Cuadrilla || rec.cuadrilla || rec.Tecnico || 'SIN ASIGNAR';
+      document.getElementById('popupDilacionTramo').innerHTML = getTramoBadge(rec.Tramo_Atencio || rec.horario);
+      document.getElementById('popupDilacionHInicio').innerText = rec.H_Inicio || '-';
+      document.getElementById('popupDilacionHProceso').innerText = rec.H_Proceso || '-';
+      document.getElementById('popupDilacionFAsign').innerText = rec.F_Asignacion || rec.fecha_registro || '-';
+      document.getElementById('popupDilacionObs').innerText = rec.Observaciones || 'Sin observaciones registradas.';
+
+      const popup = document.getElementById('modalDilacion');
+      if (popup) popup.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeDilacionModal() {
+      const popup = document.getElementById('modalDilacion');
+      if (popup) popup.classList.add('hidden');
+    }
+
     function openModalForEdit(idOp) {
       const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
       if (!rec) return;
@@ -1305,7 +1438,7 @@
       if (modalEst) modalEst.value = String(rec.Estado || rec.estado || 'EN PROCESO').toUpperCase().trim();
 
       const modalTec = document.getElementById('modalTecnico');
-      if (modalTec) modalTec.value = String(rec.Cuadrilla || rec.Tecnico || '').toUpperCase();
+      if (modalTec) modalTec.value = String(rec.Cuadrilla || rec.cuadrilla || rec.Tecnico || '').toUpperCase();
 
       const modalObs = document.getElementById('modalObservaciones');
       if (modalObs) modalObs.value = String(rec.Observaciones || '').toUpperCase();

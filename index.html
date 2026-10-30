@@ -956,8 +956,18 @@
           }
         }
 
+        // REGLA ESPECIAL: PRESERVAR ESTADO 'COORDINADO' SI LA NUEVA CARGA TRAE 'PROGRAMADO'
+        let incEst = getEstVal(row);
+        if (existingIndex !== -1) {
+          const oldEst = getEstVal(allRecords[existingIndex]);
+          if (oldEst === 'COORDINADO' && incEst === 'PROGRAMADO') {
+            incEst = 'COORDINADO';
+            row["Estado"] = 'COORDINADO';
+            if (row["estado"] !== undefined) row["estado"] = 'COORDINADO';
+          }
+        }
+
         // Comparación de estado
-        const incEst = getEstVal(row);
         if (existingIndex !== -1) {
           const oldEst = getEstVal(allRecords[existingIndex]);
           if (incEst && incEst !== oldEst) {

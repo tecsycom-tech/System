@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DATA_PF_WIN</title>
+  
+  <!-- Favicon / Ícono del Sistema -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230284c7'/%3E%3Crect x='17' y='15' width='30' height='38' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3Crect x='24' y='9' width='16' height='10' rx='3' fill='white'/%3E%3Cpath d='M25 35l6 6 11-13' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230284c7'/%3E%3Crect x='17' y='15' width='30' height='38' rx='5' fill='none' stroke='white' stroke-width='4'/%3E%3Crect x='24' y='9' width='16' height='10' rx='3' fill='white'/%3E%3Cpath d='M25 35l6 6 11-13' fill='none' stroke='white' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#0f172a">
+
+  <!-- Fonts & Tailwind CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff', 100: '#e0f2fe', 500: '#0284c7', 600: '#0369a1', 700: '#075985', 900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tab-active { border-bottom: 3px solid #0284c7; color: #0284c7; font-weight: 700; background-color: #ffffff; }
+    table { min-width: 1400px; border-collapse: collapse; }
+    th { position: relative; user-select: none; }
+    /* Encabezado de la tabla principal: naranja corporativo (#FF5A0A) y texto blanco */
+    #mainTable thead tr, #mainTable thead th {
+      background-color: #FF5A0A !important;
+      color: #ffffff !important;
+    }
+    #mainTable thead th { border-right: 1px solid rgba(255,255,255,0.25); }
+    #mainTable thead th:last-child { border-right: none; }
+    #mainTable thead .resizer:hover, #mainTable thead .resizing { background-color: #ffffff; }
+    .resizer {
+      position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+      cursor: col-resize; user-select: none; touch-action: none;
+    }
+    .resizer:hover, .resizing { background-color: #0284c7; }
+    
+    @keyframes pulse-alert {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .alert-rojo { animation: pulse-alert 1.5s infinite; }
+
+    /* Animación para el Recuadro Rojo Parpadeante de DNI Duplicado */
+    @keyframes duplicate-border-pulse {
+      0%, 100% {
+        outline: 3px solid #ef4444;
+        box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.4);
+      }
+      50% {
+        outline: 3px solid #7f1d1d;
+        box-shadow: inset 0 0 2px rgba(127, 29, 29, 0.2);
+      }
+    }
+    .row-duplicate-alert {
+      animation: duplicate-border-pulse 1s infinite !important;
+      outline-offset: -3px;
+      position: relative;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col relative">
+
+  <script>
+    const SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx0C6hWh7qLFsQH1jy6afj3evZ4qVb6Qb4R75aOz8qsyRNnBz6yETKxCinLrMt_E0kqlA/exec";
+  </script>
+
+  <!-- Datalist con Lista Frecuente de Técnicos -->
+  <datalist id="listaTecnicos">
+    <option value="TE052 JOSEP ROBERTO FABIAN POMAZONGO"></option>
+    <option value="TE007 EFRAÍN TITO HUAMAN"></option>
+    <option value="TE047 MANUEL MARTIN JOEL YERSON"></option>
+    <option value="TE023 EDISON PAGAN ATENCIO"></option>
+    <option value="TE060 JHON ALEXANDER JAIMES CASTILLO"></option>
+    <option value="TE028 JUAN CARLOS ALBAN SANDOVAL"></option>
+    <option value="TE026 OMAR RUBENS PALOMINO GASPAR"></option>
+  </datalist>
+
+  <!-- Notificación Toast Popup -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 ease-in-out bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-3">
+    <div class="p-1 bg-emerald-500 rounded-full text-white flex-shrink-0" id="toastIconContainer">
+      <i data-lucide="check" class="w-4 h-4" id="toastIcon"></i>
+    </div>
+    <div>
+      <p class="text-xs font-bold" id="toastTitle">¡Guardado Exitosamente!</p>
+      <p class="text-[10px] text-slate-300" id="toastMessage">El registro fue actualizado y sincronizado.</p>
+    </div>
+  </div>
+
+  <!-- Header Principal -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-brand-500 rounded-lg text-white">
+          <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight">Control Operativo de Campo — TECSYCOM</h1>
+          <p class="text-xs text-slate-400">Ordenamiento por Estado & Sincronización Inteligente</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-3 flex-wrap">
+        <!-- Control de Alerta de Duplicidad -->
+        <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+          <label class="flex items-center cursor-pointer space-x-2">
+            <input type="checkbox" id="toggleDupAlert" class="sr-only peer" checked onchange="toggleDuplicateAlerts(this.checked)">
+            <div class="w-8 h-4 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-rose-600 relative"></div>
+            <span class="text-xs font-semibold text-slate-200 flex items-center gap-1">
+              <i data-lucide="bell" class="w-3.5 h-3.5 text-rose-400"></i>
+              <span class="hidden sm:inline">Alertas DNI Duplicado</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="text-xs font-mono bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-emerald-400 flex items-center space-x-2">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          <span id="liveClock">00:00:00</span>
+        </div>
+
+        <div id="syncStatus" class="flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-slate-500" id="syncDot"></span>
+          <span id="syncText">Listo</span>
+        </div>
+        <button onclick="fetchFromGoogleSheets()" class="flex items-center space-x-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Sincronizar Sheet</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="max-w-[98%] mx-auto px-4 py-5 flex-grow w-full space-y-5">
+
+    <!-- Panel Superior -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      
+      <!-- Carga de CSV / Excel -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-xs font-bold text-slate-800 uppercase flex items-center space-x-1.5">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-brand-500"></i>
+              <span>Carga de CSV / AppSheet</span>
+            </h2>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-3">
+            Carga tu archivo actualizado. Se mantendrá la cuadrilla previa si la carga no contiene técnico.
+          </p>
+        </div>
+
+        <label class="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+          <div class="flex flex-col items-center justify-center pt-2 pb-2">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5 text-slate-400 mb-1"></i>
+            <p class="text-xs text-slate-600 font-medium"><span class="text-brand-600 font-semibold">Seleccionar CSV / Excel</span></p>
+          </div>
+          <input type="file" id="csvFileInput" accept=".csv,.txt,.xlsx,.xls" class="hidden" onchange="handleFileSelect(event)">
+        </label>
+      </div>
+
+      <!-- Resumen & Exportación -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 lg:col-span-2 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold text-slate-800 uppercase flex items-center space-x-1.5">
+            <i data-lucide="timer" class="w-4 h-4 text-brand-500"></i>
+            <span>Resumen Operativo & Estado de Dilación</span>
+          </h2>
+          <div class="flex items-center space-x-2">
+            <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center space-x-1 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Exportar Todo (.xlsx)</span>
+            </button>
+            <span class="text-xs text-slate-500 font-semibold" id="totalRecordsBadge">Total: 0</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 my-1">
+          <div class="bg-rose-50 p-2 rounded-lg border border-rose-200">
+            <p class="text-[10px] font-bold text-rose-800 uppercase flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-rose-600"></span><span>Alertado</span>
+            </p>
+            <p class="text-base font-extrabold text-rose-600 mt-0.5" id="cntAlertado">0</p>
+          </div>
+          <div class="bg-amber-50 p-2 rounded-lg border border-amber-200">
+            <p class="text-[10px] font-bold text-amber-800 uppercase flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Próximo Limite</span>
+            </p>
+            <p class="text-base font-extrabold text-amber-600 mt-0.5" id="cntProximo">0</p>
+          </div>
+          <div class="bg-purple-50 p-2 rounded-lg border border-purple-100">
+            <p class="text-[10px] font-bold text-purple-700 uppercase">En Proceso</p>
+            <p class="text-base font-extrabold text-purple-600 mt-0.5" id="cntProceso">0</p>
+          </div>
+          <div class="bg-cyan-50 p-2 rounded-lg border border-cyan-100">
+            <p class="text-[10px] font-bold text-cyan-700 uppercase">En Camino</p>
+            <p class="text-base font-extrabold text-cyan-600 mt-0.5" id="cntCamino">0</p>
+          </div>
+          <div class="bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+            <p class="text-[10px] font-bold text-emerald-700 uppercase">Finalizados</p>
+            <p class="text-base font-extrabold text-emerald-600 mt-0.5" id="cntFinalizado">0</p>
+          </div>
+          <div class="bg-red-50 p-2 rounded-lg border border-red-300">
+            <p class="text-[10px] font-bold text-red-800 uppercase flex items-center space-x-1">
+              <i data-lucide="copy" class="w-3 h-3 text-red-600"></i><span>DNIs Duplicados</span>
+            </p>
+            <p class="text-base font-extrabold text-red-600 mt-0.5" id="cntDuplicados">0</p>
+          </div>
+        </div>
+
+        <div class="mt-2 flex space-x-2">
+          <div class="relative flex-grow">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2 text-slate-400"></i>
+            <input type="text" id="searchInput" onkeyup="filterData()" placeholder="Buscar por cliente, DNI, técnico o código..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          <button onclick="clearSearch()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs rounded-lg font-medium transition">Limpiar</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Resultado de la Comparación (registros que cambiaron de estado) -->
+    <div id="panelComparacion" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-bold text-slate-800 uppercase flex items-center space-x-1.5">
+          <i data-lucide="list-checks" class="w-4 h-4 text-brand-500"></i>
+          <span>Resultado de la Comparación</span>
+          <span id="cmpHora" class="text-[10px] font-medium text-slate-400 normal-case ml-2"></span>
+        </h3>
+        <button onclick="document.getElementById('panelComparacion').classList.add('hidden')" title="Ocultar" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center">
+          <p class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Nuevos Registros</p>
+          <p id="cmpNuevos" class="text-xl font-black text-emerald-600">0</p>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-center">
+          <p class="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Cambiaron de Estado</p>
+          <p id="cmpCambios" class="text-xl font-black text-amber-600">0</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-center">
+          <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sin Modificación</p>
+          <p id="cmpSinCambio" class="text-xl font-black text-slate-600">0</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-56 overflow-y-auto">
+        <table class="w-full text-left text-xs text-slate-600" style="min-width:0">
+          <thead class="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200 sticky top-0">
+            <tr>
+              <th class="p-2">Acción</th>
+              <th class="p-2">IDoperacion</th>
+              <th class="p-2">Cliente</th>
+              <th class="p-2">Cuadrilla</th>
+              <th class="p-2">Estado Anterior</th>
+              <th class="p-2">Estado Nuevo</th>
+              <th class="p-2">Detalle</th>
+            </tr>
+          </thead>
+          <tbody id="cmpBody" class="divide-y divide-slate-200 bg-white"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Órdenes sin Cuadrilla Asignada -->
+    <div id="panelSinCuadrilla" class="hidden bg-amber-50/60 rounded-xl border border-amber-200 p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2 pb-2 border-b border-amber-200/60">
+        <div class="flex items-center gap-2">
+          <span class="p-1.5 bg-amber-500 text-white rounded-md"><i data-lucide="user-x" class="w-3.5 h-3.5"></i></span>
+          <h3 class="text-sm font-bold text-amber-900">Órdenes sin Cuadrilla Asignada</h3>
+        </div>
+        <span id="badgeSinCuadrilla" class="bg-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">0 Órdenes</span>
+      </div>
+      <div class="overflow-x-auto border border-amber-200 rounded-lg max-h-56 overflow-y-auto bg-white">
+        <table class="w-full text-left text-xs" style="min-width:0">
+          <thead class="bg-amber-100/80 text-amber-900 font-bold border-b border-amber-200 sticky top-0 whitespace-nowrap">
+            <tr>
+              <th class="p-2">IDoperacion</th>
+              <th class="p-2">Estado</th>
+              <th class="p-2">DNI Cliente</th>
+              <th class="p-2">Nom Cliente</th>
+              <th class="p-2">Dirección Cliente</th>
+              <th class="p-2">Distrito</th>
+              <th class="p-2">Teléfono</th>
+              <th class="p-2">Cuadrilla</th>
+            </tr>
+          </thead>
+          <tbody id="tblSinCuadrilla" class="divide-y divide-amber-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tabla Única Integrada -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      
+      <!-- Pestañas -->
+      <div class="flex border-b border-slate-200 bg-slate-50 px-4 pt-2 overflow-x-auto">
+        <button onclick="switchTab('DATA_PF_WIN')" id="tab-DATA_PF_WIN" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 tab-active whitespace-nowrap">
+          <i data-lucide="database" class="w-4 h-4 text-brand-600"></i>
+          <span>DATA_PF_WIN (General)</span>
+          <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-DATA_PF_WIN">0</span>
+        </button>
+        
+        <button onclick="switchTab('PENDIENTE')" id="tab-PENDIENTE" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="clock" class="w-4 h-4 text-sky-500"></i>
+          <span>PENDIENTES</span>
+          <span class="bg-sky-100 text-sky-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-PENDIENTE">0</span>
+        </button>
+
+        <button onclick="switchTab('REPROGRAMA')" id="tab-REPROGRAMA" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="calendar-clock" class="w-4 h-4 text-amber-500"></i>
+          <span>REPROGRAMA</span>
+          <span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-REPROGRAMA">0</span>
+        </button>
+
+        <button onclick="switchTab('CANCELADO')" id="tab-CANCELADO" class="tab-button px-4 py-2.5 text-xs font-semibold text-slate-600 flex items-center space-x-2 whitespace-nowrap">
+          <i data-lucide="x-circle" class="w-4 h-4 text-rose-500"></i>
+          <span>CANCELADO / DESESTIMADOS</span>
+          <span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-full font-bold ml-1" id="badge-CANCELADO">0</span>
+        </button>
+      </div>
+
+      <!-- Tabla de Datos -->
+      <div class="p-0 overflow-x-auto custom-scrollbar max-h-[600px]">
+        <table id="mainTable" class="w-full text-left border-collapse text-[11px]">
+          <thead>
+            <tr id="tableHeaders" class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-10"></tr>
+          </thead>
+          <tbody id="dataTableBody" class="divide-y divide-slate-100"></tbody>
+        </table>
+
+        <div id="emptyState" class="p-12 text-center text-slate-400 hidden">
+          <i data-lucide="inbox" class="w-12 h-12 mx-auto text-slate-300 mb-2"></i>
+          <p class="font-medium text-slate-600 text-sm">No hay registros para mostrar</p>
+          <p class="text-xs text-slate-400 mt-1">Sube tu archivo CSV o sincroniza con Google Sheets.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: Gestión de Estado y Cuadrilla -->
+  <div id="modalEstado" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+      <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="edit-3" class="w-5 h-5 text-brand-400"></i>
+          <h3 class="font-bold text-sm">Gestión & Actualización de Registro</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="formUpdateEstado" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="modalIDoperacion">
+
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+          <div class="flex justify-between items-center text-xs text-slate-500"><span>Cliente:</span><span id="modalClienteNombre" class="font-bold text-slate-800"></span></div>
+          <div class="flex justify-between items-center text-xs text-slate-500"><span>DNI:</span><span id="modalClienteDNI" class="font-bold text-slate-800"></span></div>
+          <div class="flex justify-between items-center text-xs text-slate-500"><span>ID Operación:</span><span id="modalIDopLabel" class="font-mono text-brand-600 font-semibold"></span></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nuevo Estado *</label>
+          <select id="modalEstadoSelect" onchange="toggleReprogramaFields()" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 font-semibold uppercase">
+            <option value="EN PROCESO">EN PROCESO</option>
+            <option value="REPROGRAMA">REPROGRAMA</option>
+            <option value="PROGRAMADO">PROGRAMADO</option>
+            <option value="EN CAMINO">EN CAMINO</option>
+            <option value="COORDINADO">COORDINADO</option>
+            <option value="FINALIZADO">FINALIZADO</option>
+            <option value="AUSENTE">AUSENTE</option>
+            <option value="CANCELADO">CANCELADO</option>
+            <option value="TRANSFERIR">TRANSFERIR</option>
+            <option value="PLANTA">PLANTA</option>
+            <option value="ZONA PELIGROSA">ZONA PELIGROSA</option>
+            <option value="DUPLICADO">DUPLICADO</option>
+            <option value="REITERATIVO">REITERATIVO</option>
+            <option value="RESCATE">RESCATE</option>
+            <option value="SIN FACILIDADES TÉCNICAS">SIN FACILIDADES TÉCNICAS</option>
+          </select>
+        </div>
+
+        <div id="reprogramaSection" class="space-y-3 bg-amber-50/60 p-3.5 rounded-lg border border-amber-200 hidden">
+          <p class="text-[11px] font-bold text-amber-800 flex items-center space-x-1">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i><span>Detalles de Reprogramación</span>
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-700 mb-1">Fecha Reprogramada</label>
+              <input type="date" id="modalFechaReprograma" class="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-700 mb-1">Tramo (Horario / Turno)</label>
+              <select id="modalTramo" class="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white font-semibold">
+                <option value="08AM-12PM">08AM-12PM</option>
+                <option value="12PM-16PM">12PM-16PM</option>
+                <option value="16PM-20PM">16PM-20PM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Técnico / Cuadrilla</label>
+          <input type="text" id="modalTecnico" list="listaTecnicos" placeholder="Ej: TE007 EFRAÍN TITO HUAMAN" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Observaciones</label>
+          <textarea id="modalObservaciones" rows="2" placeholder="Observaciones o motivo..." class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 uppercase"></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg">Cancelar</button>
+          <button type="submit" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center space-x-1">
+            <i data-lucide="save" class="w-4 h-4"></i><span>Guardar y Sincronizar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL POPUP: Detalle de Dilación / Tiempo Transcurrido -->
+  <div id="modalDilacion" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="bg-slate-900 px-6 py-4 text-white flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="clock" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="font-bold text-sm">Detalle Operativo & Estado de Tiempo</h3>
+        </div>
+        <button onclick="closeDilacionModal()" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <!-- Badge de Dilación Principal -->
+        <div id="popupDilacionHeader" class="p-4 rounded-xl border flex items-center justify-between">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tiempo Transcurrido / Dilación</p>
+            <p id="popupDilacionTiempo" class="text-2xl font-black mt-0.5">-</p>
+          </div>
+          <div id="popupDilacionEstadoBadge"></div>
+        </div>
+
+        <!-- Información General -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">ID Operación</span>
+            <span id="popupDilacionID" class="font-mono font-bold text-slate-800 text-sm">-</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">Cod. Pedido</span>
+            <span id="popupDilacionCodPedido" class="font-mono font-bold text-brand-600 text-sm">-</span>
+          </div>
+        </div>
+
+        <!-- Datos del Cliente y Ubicación -->
+        <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2 text-xs">
+          <p class="font-bold text-slate-700 text-[11px] uppercase flex items-center gap-1.5 border-b pb-1">
+            <i data-lucide="user" class="w-3.5 h-3.5 text-brand-500"></i> Información del Cliente
+          </p>
+          <div class="grid grid-cols-2 gap-2">
+            <div><span class="text-slate-400">Cliente:</span> <p id="popupDilacionCliente" class="font-bold text-slate-800"></p></div>
+            <div><span class="text-slate-400">DNI Cliente:</span> <p id="popupDilacionDNI" class="font-mono font-bold text-slate-800"></p></div>
+            <div><span class="text-slate-400">Teléfono:</span> <p id="popupDilacionTel" class="font-bold text-slate-800"></p></div>
+            <div><span class="text-slate-400">Tel. Alternativo:</span> <p id="popupDilacionTelAlt" class="font-bold text-slate-800"></p></div>
+          </div>
+          <div class="pt-1"><span class="text-slate-400">Dirección:</span> <p id="popupDilacionDireccion" class="font-medium text-slate-800"></p></div>
+          <div><span class="text-slate-400">Distrito:</span> <p id="popupDilacionDistrito" class="font-semibold text-slate-800"></p></div>
+        </div>
+
+        <!-- Asignación Operativa -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">Cuadrilla / Técnico</span>
+            <span id="popupDilacionTecnico" class="font-bold text-slate-800 uppercase block mt-0.5">-</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block text-[10px] font-bold uppercase">Tramo Atencion</span>
+            <div id="popupDilacionTramo" class="mt-0.5"></div>
+          </div>
+        </div>
+
+        <!-- Marcas de Tiempo -->
+        <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2 text-xs">
+          <p class="font-bold text-slate-700 text-[11px] uppercase flex items-center gap-1.5 border-b pb-1">
+            <i data-lucide="history" class="w-3.5 h-3.5 text-brand-500"></i> Marcas de Tiempo
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+            <div><span class="text-slate-400 text-[10px] block font-sans">H_Inicio:</span> <span id="popupDilacionHInicio" class="font-semibold text-slate-800">-</span></div>
+            <div><span class="text-slate-400 text-[10px] block font-sans">H_Proceso:</span> <span id="popupDilacionHProceso" class="font-semibold text-slate-800">-</span></div>
+            <div><span class="text-slate-400 text-[10px] block font-sans">F_Asignación:</span> <span id="popupDilacionFAsign" class="font-semibold text-slate-800">-</span></div>
+          </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="bg-amber-50/70 p-3 rounded-lg border border-amber-200 text-xs">
+          <span class="text-amber-800 font-bold block text-[10px] uppercase mb-0.5">Observaciones</span>
+          <p id="popupDilacionObs" class="text-slate-700 uppercase font-medium italic">-</p>
+        </div>
+      </div>
+
+      <div class="px-6 py-3 bg-slate-100 border-t border-slate-200 flex justify-end">
+        <button onclick="closeDilacionModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allRecords = [];
+    let duplicateDnis = new Set();
+    let allowDuplicateAlerts = true; 
+    let toastTimeout = null;
+
+    function esc(v) {
+      return String(v === undefined || v === null ? '' : v)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function normKey(k) {
+      return String(k).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/[^a-z0-9]/g,'');
+    }
+    let allDetectedColumns = [];
+    let activeTab = 'DATA_PF_WIN';
+
+    const VISIBLE_COLS = [
+      "valida_cod_pedido", "nom_cliente", "dni_cliente", "direccion_cliente", 
+      "Distrito", "telefono", "telefono_alternativo", "Estado", "Cuadrilla", "Tramo_Atencio", "Tiempo_Transcurrido", "Agencia", "Observaciones"
+    ];
+
+    const DATE_COLS = [
+      "Datetime", "F_Asignacion", "Fecha_Gestion", "fecha_registro", 
+      "fecha_programacion", "H_Progra", "H_Inicio", "H_Proceso", "H_Cierre", "H_Cancel"
+    ];
+
+    const CANCELADO_STATES = [
+      "CANCELADO", "AUSENTE", "TRANSFERIR", "PLANTA", 
+      "ZONA PELIGROSA", "DUPLICADO", "REITERATIVO", "RESCATE", 
+      "SIN FACILIDADES TÉCNICAS", "SIN FACILIDADES TECNICAS"
+    ];
+
+    const PENDIENTE_STATES = [
+      "EN CAMINO", "EN PROCESO", "PROGRAMADO", "COORDINADO"
+    ];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      startLiveClock();
+      fetchFromGoogleSheets();
+
+      setInterval(() => {
+        if (allRecords.length === 0) return;
+        const ae = document.activeElement;
+        const editando = ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName) && ae.id !== 'searchInput';
+        const modal = document.getElementById('modalEstado');
+        const modalAbierto = modal && !modal.classList.contains('hidden');
+        if (editando || modalAbierto) return;
+        updateBadges();
+        filterData();
+      }, 5000);
+    });
+
+    function startLiveClock() {
+      const clock = document.getElementById('liveClock');
+      setInterval(() => {
+        const d = new Date();
+        if (clock) clock.innerText = d.toLocaleTimeString('es-PE', { hour12: false });
+      }, 1000);
+    }
+
+    function toggleDuplicateAlerts(enabled) {
+      allowDuplicateAlerts = enabled;
+      filterData();
+      showToast(
+        enabled ? "Alertas Activadas" : "Alertas Desactivadas",
+        enabled ? "Se mostrarán bordes parpadeantes para DNIs duplicados." : "Alertas visuales de duplicidad silenciadas.",
+        !enabled
+      );
+    }
+
+    function play5SecDuplicateSound() {
+      if (!allowDuplicateAlerts) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 5);
+
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.frequency.value = 4;
+        lfoGain.gain.value = 0.2;
+
+        lfo.connect(gain.gain);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 5);
+
+        osc.start();
+        lfo.start();
+
+        setTimeout(() => {
+          try {
+            osc.stop();
+            lfo.stop();
+            ctx.close();
+          } catch(e){}
+        }, 5000);
+      } catch (e) {
+        console.warn("Audio no permitido sin interacción previa de usuario.", e);
+      }
+    }
+
+    function detectDuplicateDnis() {
+      const dniCounts = {};
+      const newDuplicates = new Set();
+
+      allRecords.forEach(r => {
+        const dni = String(r.dni_cliente || r.dni || '').trim();
+        if (dni && dni !== '-' && dni !== '0') {
+          dniCounts[dni] = (dniCounts[dni] || 0) + 1;
+        }
+      });
+
+      Object.keys(dniCounts).forEach(dni => {
+        if (dniCounts[dni] > 1) {
+          newDuplicates.add(dni);
+        }
+      });
+
+      const prevCount = duplicateDnis.size;
+      duplicateDnis = newDuplicates;
+
+      if (duplicateDnis.size > 0 && duplicateDnis.size > prevCount) {
+        play5SecDuplicateSound();
+      }
+
+      return duplicateDnis;
+    }
+
+    function showToast(title, message, isAlert = false) {
+      const toast = document.getElementById('toastNotification');
+      if (!toast) return;
+
+      const titleEl = document.getElementById('toastTitle');
+      const msgEl = document.getElementById('toastMessage');
+      const iconEl = document.getElementById('toastIcon');
+      const iconBg = document.getElementById('toastIconContainer');
+
+      if (titleEl) titleEl.innerText = title;
+      if (msgEl) msgEl.innerText = message;
+
+      if (isAlert) {
+        toast.className = "fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 pointer-events-auto transition-all duration-300 ease-in-out bg-rose-600 text-white px-4 py-3 rounded-xl shadow-2xl border border-rose-400 flex items-center space-x-3";
+        if (iconBg) iconBg.className = "p-1 bg-white rounded-full text-rose-600 flex-shrink-0";
+        if (iconEl) iconEl.setAttribute('data-lucide', 'alert-triangle');
+      } else {
+        toast.className = "fixed bottom-5 right-5 z-50 transform translate-y-0 opacity-100 pointer-events-auto transition-all duration-300 ease-in-out bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-3";
+        if (iconBg) iconBg.className = "p-1 bg-emerald-500 rounded-full text-white flex-shrink-0";
+        if (iconEl) iconEl.setAttribute('data-lucide', 'check');
+      }
+
+      lucide.createIcons();
+
+      if (toastTimeout) {
+        clearTimeout(toastTimeout);
+      }
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      }, 3500);
+    }
+
+    /* 📌 parseFechaPeru: Parsea fechas con estricto formato peruano DD/MM/YYYY HH:MM:SS */
+    function parseFechaPeru(str) {
+      if (!str) return null;
+      str = String(str).trim();
+      if (!str) return null;
+      
+      const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (!m) return null;
+      
+      const [, d, mo, y, hh, mm, ss] = m;
+      const dt = new Date(
+        parseInt(y, 10), 
+        parseInt(mo, 10) - 1, 
+        parseInt(d, 10),
+        hh ? parseInt(hh, 10) : 0, 
+        mm ? parseInt(mm, 10) : 0, 
+        ss ? parseInt(ss, 10) : 0
+      );
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function formatoHM(minutos) {
+      minutos = Math.max(0, Math.round(minutos));
+      const h = Math.floor(minutos / 60), m = minutos % 60;
+      return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+    }
+
+    function calculateDilacion(row) {
+      const estado = String(row.Estado || row.estado || '').toUpperCase().trim();
+      
+      if (estado !== 'EN CAMINO' && estado !== 'EN PROCESO') {
+        return { texto: '-', nivel: 'inactivo', badgeCls: 'bg-slate-50 text-slate-400 border-slate-200' };
+      }
+
+      const hInicio = parseFechaPeru(row.H_Inicio);
+      const hProceso = parseFechaPeru(row.H_Proceso);
+
+      let fechaRef = null;
+      
+      if (estado === 'EN CAMINO') {
+        fechaRef = hInicio;
+      } 
+      else if (estado === 'EN PROCESO') {
+        fechaRef = hProceso;
+      }
+
+      if (!fechaRef) {
+        const msgFalta = estado === 'EN CAMINO' ? 'Sin H_Inicio' : 'Sin H_Proceso';
+        return { texto: msgFalta, nivel: 'normal', badgeCls: 'bg-slate-100 text-slate-400 border-slate-200' };
+      }
+
+      const ahora = new Date();
+      const deltaMin = (ahora - fechaRef) / 60000;
+      const transcurridoTexto = formatoHM(deltaMin);
+
+      const [umbralAmarillo, umbralRojo] = estado === 'EN CAMINO' ? [50, 60] : [60, 120];
+
+      if (deltaMin >= umbralRojo) {
+        return { 
+          texto: `🚨 ${transcurridoTexto}`, 
+          nivel: 'rojo', 
+          badgeCls: 'bg-rose-100 text-rose-800 border-rose-400 font-extrabold alert-rojo' 
+        };
+      } else if (deltaMin >= umbralAmarillo) {
+        return { 
+          texto: `⚠️ ${transcurridoTexto}`, 
+          nivel: 'amarillo', 
+          badgeCls: 'bg-amber-100 text-amber-800 border-amber-400 font-bold' 
+        };
+      } else {
+        return { 
+          texto: `⏱️ ${transcurridoTexto}`, 
+          nivel: 'normal', 
+          badgeCls: 'bg-emerald-50 text-emerald-800 border-emerald-300 font-medium' 
+        };
+      }
+    }
+
+    function getAgenciaBadge(row) {
+      const agencia = String(row.Agencia || row.agencia || '').toUpperCase().trim();
+      if (agencia.includes("INVERSIONES TECSYCOM") || agencia.includes("TECSYCOM")) {
+        return `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 inline-flex items-center space-x-1 whitespace-nowrap shadow-xs">
+          <i data-lucide="shopping-cart" class="w-3 h-3 text-indigo-600"></i>
+          <span>VENTA TECSYCOM</span>
+        </span>`;
+      }
+      return `<span class="text-slate-400 text-[11px]">-</span>`;
+    }
+
+    /* 📌 formatCleanDate: Fuerza estrictamente texto plano DD/MM/YYYY HH:MM:SS para evitar recortes de Google Sheets */
+    function formatCleanDate(val) {
+      if (!val) return '';
+      let str = String(val).trim();
+      if (!str) return '';
+
+      // Si viene como formato de objeto Date ISO o numérico serial de Excel
+      if (str.includes('T') || str.includes('Z')) {
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) {
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          const hours = String(d.getHours()).padStart(2, '0');
+          const mins = String(d.getMinutes()).padStart(2, '0');
+          const secs = String(d.getSeconds()).padStart(2, '0');
+          return `${day}/${month}/${year} ${hours}:${mins}:${secs}`;
+        }
+      }
+
+      // Si ya viene con barras, normalizamos asegurando el año completo de 4 dígitos y hora con segundos
+      const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (m) {
+        let [, d, mo, y, hh, mm, ss] = m;
+        if (y.length === 2) y = '20' + y; // Corrige años de 2 dígitos (ej: 26 -> 2026)
+        const dayFmt = d.padStart(2, '0');
+        const monthFmt = mo.padStart(2, '0');
+        if (hh !== undefined && mm !== undefined) {
+          const hourFmt = hh.padStart(2, '0');
+          const minFmt = mm.padStart(2, '0');
+          const secFmt = ss !== undefined ? ss.padStart(2, '0') : '00';
+          return `${dayFmt}/${monthFmt}/${y} ${hourFmt}:${minFmt}:${secFmt}`;
+        }
+        return `${dayFmt}/${monthFmt}/${y}`;
+      }
+
+      return str;
+    }
+
+    function formatDateForInput(val) {
+      if (!val) return '';
+      let str = String(val).trim();
+      const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) {
+        return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+      }
+      if (str.includes('T')) str = str.split('T')[0];
+      if (str.match(/^\d{4}-\d{2}-\d{2}$/)) return str;
+      return '';
+    }
+
+    function normalizeTramo(val) {
+      if (!val) return '';
+      let s = String(val).trim();
+      if (s === '08:00' || s === '08:00:00') return '08AM-12PM';
+      if (s === '12:00' || s === '12:00:00') return '12PM-16PM';
+      if (s === '16:00' || s === '16:00:00') return '16PM-20PM';
+      return s;
+    }
+
+    function updateVirtualObservation(idOp, value) {
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (rec) {
+        rec.Observaciones = String(value).toUpperCase();
+        let virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+        virtualObs[idOp] = rec.Observaciones;
+        localStorage.setItem('win_virtual_obs', JSON.stringify(virtualObs));
+        syncToGoogleSheets(allRecords);
+      }
+    }
+
+    /* 📌 handleFileSelect: Lectura cruda de celdas como texto plano (raw: true) */
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      setSyncStatus("loading", "Procesando archivo...");
+      const reader = new FileReader();
+
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          // raw: true lee el texto exactamente como está en el archivo CSV/Excel sin interpretación de formato
+          const workbook = XLSX.read(data, { type: 'array', cellDates: false, raw: true });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rawJson = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: true });
+
+          if (!rawJson || rawJson.length === 0) {
+            alert("El archivo está vacío.");
+            setSyncStatus("error", "Archivo Vacío");
+            return;
+          }
+
+          if (allDetectedColumns.length === 0) {
+            allDetectedColumns = Object.keys(rawJson[0]);
+            if (!allDetectedColumns.includes("Observaciones")) allDetectedColumns.push("Observaciones");
+          }
+
+          const canon = {};
+          allDetectedColumns.forEach(c => { canon[normKey(c)] = c; });
+          const ignoradas = new Set();
+          const rows = rawJson.map(r => {
+            const o = {};
+            Object.keys(r).forEach(k => {
+              const target = canon[normKey(k)];
+              if (target) {
+                let val = r[k];
+                // Si es columna de fecha/hora, aplicamos limpieza estricta
+                if (DATE_COLS.includes(target) && val) {
+                  val = formatCleanDate(val);
+                }
+                o[target] = val;
+              } else {
+                ignoradas.add(k);
+              }
+            });
+            return o;
+          });
+
+          const tieneId = rows.some(r => String(r["IDoperacion"] || r["idoperacion"] || "").trim() !== "");
+          if (!tieneId) {
+            alert("No se encontró la columna IDoperacion en el archivo. No se modificó nada.");
+            setSyncStatus("error", "Sin IDoperacion");
+            return;
+          }
+
+          processIncomingData(rows, [...ignoradas]);
+        } catch (err) {
+          alert("Error procesando archivo: " + err.message);
+          setSyncStatus("error", "Error formato");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    }
+
+    function isCuadrillaEmpty(val) {
+      if (val === undefined || val === null) return true;
+      const s = String(val).trim().toUpperCase();
+      return !s || s === 'VACIO' || s === 'VACÍO' || s === 'SIN CUADRILLA' || s === 'S/D' || s === 'ND' || s === '-';
+    }
+
+    function processIncomingData(rows, ignoradas = []) {
+      const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+      
+      const existingIds = new Set(allRecords.map(r => String(r.IDoperacion || r.idoperacion).trim()));
+      const incomingIds = new Set();
+
+      rows.forEach(row => {
+        const idOp = String(row["IDoperacion"] || row["idoperacion"] || "").trim();
+        if (idOp) incomingIds.add(idOp);
+      });
+
+      let nuevosAgregados = 0;
+      const cmp = { nuevos: [], cambios: [], sinCambio: 0 };
+      const getEstVal = (r) => String((r && (r.Estado || r.estado)) || '').toUpperCase().trim();
+      const getCuadVal = (r) => String((r && (r.Cuadrilla || r.cuadrilla)) || '').trim();
+      const nomCli = (r) => (r && (r.nom_cliente || r.Cliente)) || '';
+
+      rows.forEach(row => {
+        const idOp = String(row["IDoperacion"] || row["idoperacion"] || "").trim();
+        if (!idOp) return;
+
+        if (virtualObs[idOp] !== undefined && virtualObs[idOp] !== "") {
+          row["Observaciones"] = virtualObs[idOp];
+        } else if (row["Observaciones"] === undefined) {
+          row["Observaciones"] = "";
+        }
+
+        DATE_COLS.forEach(c => {
+          if (row[c]) row[c] = formatCleanDate(row[c]);
+        });
+
+        if (row["Tramo_Atencio"]) row["Tramo_Atencio"] = normalizeTramo(row["Tramo_Atencio"]);
+        if (row["horario"] && !row["Tramo_Atencio"]) row["Tramo_Atencio"] = normalizeTramo(row["horario"]);
+
+        if (row["Estado"]) row["Estado"] = String(row["Estado"]).toUpperCase().trim();
+        if (row["estado"]) row["estado"] = String(row["estado"]).toUpperCase().trim();
+        if (row["Observaciones"]) row["Observaciones"] = String(row["Observaciones"]).toUpperCase();
+
+        const existingIndex = allRecords.findIndex(r => String(r.IDoperacion || r.idoperacion).trim() === idOp);
+
+        const incomingCuadrilla = getCuadVal(row);
+        if (existingIndex !== -1) {
+          const oldCuadrilla = getCuadVal(allRecords[existingIndex]);
+          if (isCuadrillaEmpty(incomingCuadrilla) && !isCuadrillaEmpty(oldCuadrilla)) {
+            row["Cuadrilla"] = oldCuadrilla;
+            if (row["cuadrilla"] !== undefined) row["cuadrilla"] = oldCuadrilla;
+          }
+        }
+
+        let incEst = getEstVal(row);
+        if (existingIndex !== -1) {
+          const oldEst = getEstVal(allRecords[existingIndex]);
+          if (oldEst === 'COORDINADO' && incEst === 'PROGRAMADO') {
+            incEst = 'COORDINADO';
+            row["Estado"] = 'COORDINADO';
+            if (row["estado"] !== undefined) row["estado"] = 'COORDINADO';
+          }
+        }
+
+        if (existingIndex !== -1) {
+          const oldEst = getEstVal(allRecords[existingIndex]);
+          if (incEst && incEst !== oldEst) {
+            cmp.cambios.push({ key: idOp, cliente: nomCli(row) || nomCli(allRecords[existingIndex]),
+              cuadrilla: getCuadVal(row) || getCuadVal(allRecords[existingIndex]), oldEst: oldEst || 'SIN ESTADO', newEst: incEst });
+          } else {
+            cmp.sinCambio++;
+          }
+        } else {
+          cmp.nuevos.push({ key: idOp, cliente: nomCli(row), cuadrilla: getCuadVal(row), oldEst: 'NO REGISTRADO', newEst: incEst || 'PENDIENTE' });
+        }
+
+        if (existingIndex !== -1) {
+          const currentObs = allRecords[existingIndex].Observaciones;
+          allRecords[existingIndex] = { ...allRecords[existingIndex], ...row };
+          if (currentObs && (!row["Observaciones"] || row["Observaciones"] === "")) {
+            allRecords[existingIndex].Observaciones = currentObs;
+          }
+        } else {
+          allRecords.push(row);
+          nuevosAgregados++;
+        }
+      });
+
+      let retiradosQuantum = [];
+      if (existingIds.size > 0) {
+        existingIds.forEach(oldId => {
+          if (!incomingIds.has(oldId)) {
+            retiradosQuantum.push(oldId);
+          }
+        });
+      }
+
+      const sinCuadrilla = rows.filter(r => {
+        const idv = String(r["IDoperacion"] || r["idoperacion"] || "").trim();
+        if (!idv) return false;
+        return isCuadrillaEmpty(getCuadVal(r));
+      });
+
+      detectDuplicateDnis();
+      renderAll();
+      renderComparacion(cmp, sinCuadrilla);
+      syncToGoogleSheets(allRecords);
+
+      if (retiradosQuantum.length > 0) {
+        showToast("⚠️ ALERTA QUANTUM", `${retiradosQuantum.length} orden(es) ya no figuran en el archivo: [${retiradosQuantum.join(', ')}]`, true);
+      } else {
+        const extra = ignoradas.length ? ` (${ignoradas.length} columna(s) ajena(s) ignorada(s): ${ignoradas.slice(0,3).join(', ')}${ignoradas.length>3?'…':''})` : '';
+        showToast("Sincronización Exitosa", `Datos actualizados, cuadrillas preservadas. Nuevos: ${nuevosAgregados}.${extra}`);
+      }
+    }
+
+    const MAX_FILAS_PANEL = 500;
+
+    function renderComparacion(cmp, sinCuadrilla) {
+      const panel = document.getElementById('panelComparacion');
+      if (panel) {
+        document.getElementById('cmpNuevos').innerText = cmp.nuevos.length;
+        document.getElementById('cmpCambios').innerText = cmp.cambios.length;
+        document.getElementById('cmpSinCambio').innerText = cmp.sinCambio;
+        document.getElementById('cmpHora').innerText = 'Última carga: ' + new Date().toLocaleTimeString('es-PE', { hour12: false });
+
+        const lista = [
+          ...cmp.cambios.map(c => ({ ...c, tipo: 'CAMBIO' })),
+          ...cmp.nuevos.map(c => ({ ...c, tipo: 'NUEVO' }))
+        ];
+        const body = document.getElementById('cmpBody');
+        if (lista.length === 0) {
+          body.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500 font-medium italic">No se detectaron diferencias: todos los estados coinciden con el sistema.</td></tr>';
+        } else {
+          body.innerHTML = lista.slice(0, MAX_FILAS_PANEL).map(it => {
+            const badge = it.tipo === 'NUEVO'
+              ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[10px]">NUEVO</span>'
+              : '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold text-[10px]">CAMBIO ESTADO</span>';
+            return `<tr class="whitespace-nowrap">
+              <td class="p-2">${badge}</td>
+              <td class="p-2 font-mono font-medium text-slate-700">${esc(it.key)}</td>
+              <td class="p-2 truncate max-w-[220px]">${esc(it.cliente) || '-'}</td>
+              <td class="p-2">${esc(it.cuadrilla) || '-'}</td>
+              <td class="p-2">${it.tipo === 'NUEVO' ? '<span class="text-slate-400">' + esc(it.oldEst) + '</span>' : getEstadoBadge(it.oldEst)}</td>
+              <td class="p-2">${getEstadoBadge(it.newEst)}</td>
+              <td class="p-2 text-slate-500 text-[11px]">${it.tipo === 'NUEVO' ? 'Registro nuevo (no existía)' : 'Cambio de estado detectado'}</td>
+            </tr>`;
+          }).join('') + (lista.length > MAX_FILAS_PANEL
+            ? `<tr><td colspan="7" class="p-2 text-center text-[11px] text-slate-400">Mostrando ${MAX_FILAS_PANEL} de ${lista.length} registros</td></tr>` : '');
+        }
+        panel.classList.remove('hidden');
+      }
+
+      const pSin = document.getElementById('panelSinCuadrilla');
+      if (pSin) {
+        if (sinCuadrilla.length > 0) {
+          document.getElementById('badgeSinCuadrilla').innerText = `${sinCuadrilla.length} Órdenes`;
+          document.getElementById('tblSinCuadrilla').innerHTML = sinCuadrilla.slice(0, MAX_FILAS_PANEL).map(r => `
+            <tr class="hover:bg-amber-50/50 whitespace-nowrap">
+              <td class="p-2 font-mono text-slate-700">${esc(r.IDoperacion || r.idoperacion)}</td>
+              <td class="p-2">${getEstadoBadge(r.Estado || r.estado)}</td>
+              <td class="p-2 font-mono">${esc(r.dni_cliente || r.dni) || '-'}</td>
+              <td class="p-2 font-medium text-slate-800 truncate max-w-[200px]">${esc(r.nom_cliente || r.Cliente) || '-'}</td>
+              <td class="p-2 truncate max-w-[240px]" title="${esc(r.direccion_cliente)}">${esc(r.direccion_cliente) || '-'}</td>
+              <td class="p-2">${esc(r.Distrito || r.distrito) || '-'}</td>
+              <td class="p-2">${esc(r.telefono) || '-'}</td>
+              <td class="p-2"><span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">SIN CUADRILLA</span></td>
+            </tr>`).join('') + (sinCuadrilla.length > MAX_FILAS_PANEL
+              ? `<tr><td colspan="8" class="p-2 text-center text-[11px] text-slate-400">Mostrando ${MAX_FILAS_PANEL} de ${sinCuadrilla.length} órdenes</td></tr>` : '');
+          pSin.classList.remove('hidden');
+        } else {
+          pSin.classList.add('hidden');
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function exportToExcel() {
+      if (allRecords.length === 0) {
+        alert("No hay registros para exportar.");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(allRecords, allDetectedColumns.length ? { header: allDetectedColumns } : undefined);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "DATA_PF_WIN");
+      XLSX.writeFile(wb, `DATA_PF_WIN_Completo_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function fetchFromGoogleSheets() {
+      setSyncStatus("loading", "Sincronizando con Sheet...");
+      fetch(SCRIPT_WEB_APP_URL, { redirect: "follow" })
+        .then(res => {
+          if (!res.ok) throw new Error("Error HTTP: " + res.status);
+          return res.json();
+        })
+        .then(data => {
+          const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+          if (Array.isArray(data) && data.length > 0) {
+            allRecords = data.map(item => {
+              const idOp = String(item.IDoperacion || item.idoperacion || "").trim();
+              if (virtualObs[idOp] !== undefined && virtualObs[idOp] !== "") {
+                item.Observaciones = virtualObs[idOp];
+              }
+              if (item.Estado) item.Estado = String(item.Estado).toUpperCase().trim();
+              if (item.estado) item.estado = String(item.estado).toUpperCase().trim();
+              if (item.Observaciones) item.Observaciones = String(item.Observaciones).toUpperCase();
+              if (item.Tramo_Atencio) item.Tramo_Atencio = normalizeTramo(item.Tramo_Atencio);
+              DATE_COLS.forEach(c => { if (item[c]) item[c] = formatCleanDate(item[c]); });
+              return item;
+            });
+            allDetectedColumns = Object.keys(data[0]);
+            if (!allDetectedColumns.includes("Observaciones")) allDetectedColumns.push("Observaciones");
+            setSyncStatus("success", "Sincronizado");
+          } else {
+            setSyncStatus("success", "Sheet Vacío");
+            allRecords = [];
+          }
+          detectDuplicateDnis();
+          renderAll();
+        })
+        .catch(err => {
+          console.error("Error sincronizando:", err);
+          setSyncStatus("error", "Error de conexión");
+          renderAll();
+        });
+    }
+
+    function syncToGoogleSheets(records) {
+      setSyncStatus("loading", "Guardando Cloud...");
+      fetch(SCRIPT_WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ records: records })
+      })
+      .then(() => setSyncStatus("success", "Guardado"))
+      .catch(err => {
+        console.error(err);
+        setSyncStatus("error", "Error guardando");
+      });
+    }
+
+    function switchTab(tabName) {
+      activeTab = tabName;
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('tab-active'));
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      if (activeBtn) activeBtn.classList.add('tab-active');
+      filterData();
+    }
+
+    function renderAll() {
+      updateBadges();
+      filterData();
+    }
+
+    function updateBadges() {
+      const badgeGen = document.getElementById('badge-DATA_PF_WIN');
+      if (badgeGen) badgeGen.innerText = allRecords.length;
+
+      const getEst = (r) => String(r.Estado || r.estado || '').toUpperCase().trim();
+      const pendientes = allRecords.filter(r => PENDIENTE_STATES.includes(getEst(r)));
+      const reprogramas = allRecords.filter(r => getEst(r) === 'REPROGRAMA');
+      const cancelados = allRecords.filter(r => CANCELADO_STATES.includes(getEst(r)));
+
+      const badgePen = document.getElementById('badge-PENDIENTE');
+      if (badgePen) badgePen.innerText = pendientes.length;
+
+      const badgeRep = document.getElementById('badge-REPROGRAMA');
+      if (badgeRep) badgeRep.innerText = reprogramas.length;
+
+      const badgeCan = document.getElementById('badge-CANCELADO');
+      if (badgeCan) badgeCan.innerText = cancelados.length;
+
+      const cntProc = document.getElementById('cntProceso');
+      if (cntProc) cntProc.innerText = allRecords.filter(r => getEst(r) === 'EN PROCESO').length;
+
+      const cntCam = document.getElementById('cntCamino');
+      if (cntCam) cntCam.innerText = allRecords.filter(r => getEst(r) === 'EN CAMINO').length;
+
+      const cntFin = document.getElementById('cntFinalizado');
+      if (cntFin) cntFin.innerText = allRecords.filter(r => getEst(r) === 'FINALIZADO').length;
+
+      const cntDup = document.getElementById('cntDuplicados');
+      if (cntDup) cntDup.innerText = duplicateDnis.size;
+
+      let cntAlt = 0;
+      let cntProx = 0;
+      allRecords.forEach(r => {
+        const dil = calculateDilacion(r);
+        if (dil.nivel === 'rojo') cntAlt++;
+        else if (dil.nivel === 'amarillo') cntProx++;
+      });
+
+      const cntAltEl = document.getElementById('cntAlertado');
+      if (cntAltEl) cntAltEl.innerText = cntAlt;
+
+      const cntProxEl = document.getElementById('cntProximo');
+      if (cntProxEl) cntProxEl.innerText = cntProx;
+
+      const totBadge = document.getElementById('totalRecordsBadge');
+      if (totBadge) totBadge.innerText = `Total: ${allRecords.length}`;
+    }
+
+    function filterData() {
+      const searchInput = document.getElementById('searchInput');
+      const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      let list = [];
+
+      const getEst = (r) => String(r.Estado || r.estado || '').toUpperCase().trim();
+
+      if (activeTab === 'DATA_PF_WIN') list = [...allRecords];
+      else if (activeTab === 'PENDIENTE') list = allRecords.filter(r => PENDIENTE_STATES.includes(getEst(r)));
+      else if (activeTab === 'REPROGRAMA') list = allRecords.filter(r => getEst(r) === 'REPROGRAMA');
+      else if (activeTab === 'CANCELADO') list = allRecords.filter(r => CANCELADO_STATES.includes(getEst(r)));
+
+      if (search) {
+        list = list.filter(row => JSON.stringify(row).toLowerCase().includes(search));
+      }
+
+      list.sort((a, b) => {
+        let estA = String(a.Estado || a.estado || '').toUpperCase().trim();
+        let estB = String(b.Estado || b.estado || '').toUpperCase().trim();
+        if (estA !== estB) {
+          return estA.localeCompare(estB);
+        }
+        let tA = String(a.Tramo_Atencio || '').toUpperCase().trim();
+        let tB = String(b.Tramo_Atencio || '').toUpperCase().trim();
+        return tA.localeCompare(tB);
+      });
+
+      renderTable(list);
+    }
+
+    function getTramoBadge(tramo) {
+      const t = String(tramo || '').toUpperCase().trim();
+      let cls = "bg-slate-100 text-slate-800 border-slate-200";
+      if (t === '08AM-12PM') cls = "bg-sky-100 text-sky-800 border-sky-300";
+      else if (t === '12PM-16PM') cls = "bg-amber-100 text-amber-800 border-amber-300";
+      else if (t === '16PM-20PM') cls = "bg-indigo-100 text-indigo-800 border-indigo-300";
+
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls} inline-block whitespace-nowrap">${t || 'S/D'}</span>`;
+    }
+
+    function getEstadoBadge(estado) {
+      const est = String(estado || '').toUpperCase().trim();
+      let cls = "bg-slate-100 text-slate-800 border-slate-200";
+      
+      if (est === 'EN CAMINO') cls = "bg-cyan-100 text-cyan-800 border-cyan-300";
+      else if (est === 'EN PROCESO') cls = "bg-purple-100 text-purple-800 border-purple-300";
+      else if (est === 'PROGRAMADO') cls = "bg-amber-100 text-amber-800 border-amber-300";
+      else if (est === 'REPROGRAMA') cls = "bg-pink-100 text-pink-800 border-pink-300";
+      else if (est === 'FINALIZADO') cls = "bg-emerald-100 text-emerald-800 border-emerald-300";
+      else if (est === 'COORDINADO') cls = "bg-teal-100 text-teal-800 border-teal-300";
+      else if (est === 'AUSENTE') cls = "bg-rose-100 text-rose-800 border-rose-300";
+      else if (est === 'CANCELADO') cls = "bg-rose-100 text-rose-800 border-rose-300";
+      else if (est === 'TRANSFERIR') cls = "bg-violet-100 text-violet-800 border-violet-300";
+      else if (est === 'PLANTA') cls = "bg-blue-100 text-blue-800 border-blue-300";
+      else if (est === 'ZONA PELIGROSA') cls = "bg-red-100 text-red-900 border-red-300 font-extrabold";
+      else if (est === 'RESCATE') cls = "bg-yellow-100 text-yellow-800 border-yellow-300";
+      else if (CANCELADO_STATES.includes(est)) cls = "bg-rose-200 text-rose-900 border-rose-400";
+
+      return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls} inline-block whitespace-nowrap">${est || 'S/D'}</span>`;
+    }
+
+    function renderTable(records) {
+      const thead = document.getElementById('tableHeaders');
+      const tbody = document.getElementById('dataTableBody');
+      const empty = document.getElementById('emptyState');
+      if (!tbody || !thead) return;
+
+      tbody.innerHTML = "";
+      thead.innerHTML = "";
+
+      if (records.length === 0) {
+        if (empty) empty.classList.add('hidden');
+        return;
+      }
+      if (empty) empty.classList.add('hidden');
+
+      VISIBLE_COLS.forEach(col => {
+        const th = document.createElement('th');
+        th.className = "p-3 uppercase text-[10px] tracking-wider relative";
+        th.innerText = col.replace('_', ' ');
+        
+        const resizer = document.createElement('div');
+        resizer.className = 'resizer';
+        th.appendChild(resizer);
+        makeResizable(th, resizer);
+
+        thead.appendChild(th);
+      });
+
+      const thAcc = document.createElement('th');
+      thAcc.className = "p-3 text-center uppercase text-[10px]";
+      thAcc.innerText = "Accion";
+      thead.appendChild(thAcc);
+
+      records.forEach(row => {
+        const tr = document.createElement('tr');
+        const dil = calculateDilacion(row);
+        const dni = String(row.dni_cliente || row.dni || '').trim();
+        const isDuplicate = duplicateDnis.has(dni);
+
+        let rowClasses = [];
+        if (dil.nivel === 'rojo') {
+          rowClasses.push("bg-rose-50/70 hover:bg-rose-100/80 transition border-b border-rose-200");
+        } else if (dil.nivel === 'amarillo') {
+          rowClasses.push("bg-amber-50/50 hover:bg-amber-100/60 transition border-b border-amber-200");
+        } else {
+          rowClasses.push("hover:bg-slate-50 transition border-b border-slate-100");
+        }
+
+        if (allowDuplicateAlerts && isDuplicate) {
+          rowClasses.push("row-duplicate-alert");
+        }
+
+        tr.className = rowClasses.join(' ');
+
+        const idOp = row["IDoperacion"] || row["idoperacion"] || "";
+
+        VISIBLE_COLS.forEach(col => {
+          const td = document.createElement('td');
+          td.className = "p-3 text-[11px] text-slate-700 truncate max-w-[200px]";
+
+          if (col === 'Estado') {
+            td.innerHTML = getEstadoBadge(row[col]);
+          } else if (col === 'Tramo_Atencio') {
+            td.innerHTML = getTramoBadge(row[col]);
+          } else if (col === 'Tiempo_Transcurrido') {
+            td.innerHTML = `<button onclick="openDilacionModal('${esc(idOp)}')" type="button" title="Ver detalle de dilación" class="px-2 py-0.5 rounded text-[10px] border ${dil.badgeCls} inline-block font-mono whitespace-nowrap cursor-pointer hover:scale-105 transition-transform shadow-xs">${dil.texto}</button>`;
+          } else if (col === 'Agencia') {
+            td.innerHTML = getAgenciaBadge(row);
+          } else if (col === 'Observaciones') {
+            td.innerHTML = `<input type="text" value="${esc(row[col])}" data-id="${esc(idOp)}"
+              onchange="updateVirtualObservation(this.dataset.id, this.value)" 
+              class="w-full bg-transparent hover:bg-white focus:bg-white border border-transparent hover:border-slate-300 focus:border-brand-500 rounded px-1.5 py-1 text-[11px] uppercase transition" 
+              placeholder="Añadir comentario...">`;
+          } else if (col === 'dni_cliente') {
+            if (allowDuplicateAlerts && isDuplicate) {
+              td.innerHTML = `<span class="font-mono font-bold text-rose-700 flex items-center gap-1"><i data-lucide="alert-circle" class="w-3.5 h-3.5 text-rose-600 animate-pulse"></i>${esc(row[col])}</span>`;
+            } else {
+              td.innerText = row[col] !== undefined && row[col] !== null ? row[col] : '-';
+            }
+          } else {
+            td.innerText = row[col] !== undefined && row[col] !== null ? row[col] : '-';
+          }
+          tr.appendChild(td);
+        });
+
+        const tdAcc = document.createElement('td');
+        tdAcc.className = "p-3 text-center";
+        tdAcc.innerHTML = `
+          <button data-id="${esc(idOp)}" onclick="openModalForEdit(this.dataset.id)" title="Modificar Estado / Técnico" class="p-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg transition">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+        tr.appendChild(tdAcc);
+
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function makeResizable(th, resizer) {
+      let x = 0;
+      let w = 0;
+
+      resizer.addEventListener('mousedown', function(e) {
+        x = e.clientX;
+        w = th.offsetWidth;
+        resizer.classList.add('resizing');
+        document.addEventListener('mousemove', mouseMove);
+        document.addEventListener('mouseup', mouseUp);
+        e.preventDefault();
+      });
+
+      function mouseMove(e) {
+        const dx = e.clientX - x;
+        th.style.width = `${Math.max(60, w + dx)}px`;
+      }
+
+      function mouseUp() {
+        resizer.classList.remove('resizing');
+        document.removeEventListener('mousemove', mouseMove);
+        document.removeEventListener('mouseup', mouseUp);
+      }
+    }
+
+    function openDilacionModal(idOp) {
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (!rec) return;
+
+      const dil = calculateDilacion(rec);
+      
+      const header = document.getElementById('popupDilacionHeader');
+      if (header) {
+        if (dil.nivel === 'rojo') {
+          header.className = "p-4 rounded-xl border flex items-center justify-between bg-rose-50 border-rose-200 text-rose-900";
+        } else if (dil.nivel === 'amarillo') {
+          header.className = "p-4 rounded-xl border flex items-center justify-between bg-amber-50 border-amber-200 text-amber-900";
+        } else {
+          header.className = "p-4 rounded-xl border flex items-center justify-between bg-emerald-50 border-emerald-200 text-emerald-900";
+        }
+      }
+
+      document.getElementById('popupDilacionTiempo').innerText = dil.texto;
+      document.getElementById('popupDilacionEstadoBadge').innerHTML = getEstadoBadge(rec.Estado || rec.estado);
+      document.getElementById('popupDilacionID').innerText = idOp;
+      document.getElementById('popupDilacionCodPedido').innerText = rec.valida_cod_pedido || rec.cod_pedido || '-';
+      document.getElementById('popupDilacionCliente').innerText = rec.nom_cliente || rec.Cliente || '-';
+      document.getElementById('popupDilacionDNI').innerText = rec.dni_cliente || rec.dni || '-';
+      document.getElementById('popupDilacionTel').innerText = rec.telefono || '-';
+      document.getElementById('popupDilacionTelAlt').innerText = rec.telefono_alternativo || '-';
+      document.getElementById('popupDilacionDireccion').innerText = rec.direccion_cliente || '-';
+      document.getElementById('popupDilacionDistrito').innerText = rec.Distrito || rec.distrito || '-';
+      document.getElementById('popupDilacionTecnico').innerText = rec.Cuadrilla || rec.cuadrilla || rec.Tecnico || 'SIN ASIGNAR';
+      document.getElementById('popupDilacionTramo').innerHTML = getTramoBadge(rec.Tramo_Atencio || rec.horario);
+      document.getElementById('popupDilacionHInicio').innerText = rec.H_Inicio || '-';
+      document.getElementById('popupDilacionHProceso').innerText = rec.H_Proceso || '-';
+      document.getElementById('popupDilacionFAsign').innerText = rec.F_Asignacion || rec.fecha_registro || '-';
+      document.getElementById('popupDilacionObs').innerText = rec.Observaciones || 'Sin observaciones registradas.';
+
+      const popup = document.getElementById('modalDilacion');
+      if (popup) popup.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeDilacionModal() {
+      const popup = document.getElementById('modalDilacion');
+      if (popup) popup.classList.add('hidden');
+    }
+
+    function openModalForEdit(idOp) {
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (!rec) return;
+
+      const modalOp = document.getElementById('modalIDoperacion');
+      if (modalOp) modalOp.value = idOp;
+      
+      const modalLabel = document.getElementById('modalIDopLabel');
+      if (modalLabel) modalLabel.innerText = idOp;
+
+      const modalCli = document.getElementById('modalClienteNombre');
+      if (modalCli) modalCli.innerText = rec.nom_cliente || rec.Cliente || 'N/A';
+
+      const modalDni = document.getElementById('modalClienteDNI');
+      if (modalDni) modalDni.innerText = rec.dni_cliente || rec.dni || 'N/A';
+      
+      const modalEst = document.getElementById('modalEstadoSelect');
+      if (modalEst) modalEst.value = String(rec.Estado || rec.estado || 'EN PROCESO').toUpperCase().trim();
+
+      const modalTec = document.getElementById('modalTecnico');
+      if (modalTec) modalTec.value = String(rec.Cuadrilla || rec.cuadrilla || rec.Tecnico || '').toUpperCase();
+
+      const modalObs = document.getElementById('modalObservaciones');
+      if (modalObs) modalObs.value = String(rec.Observaciones || '').toUpperCase();
+
+      const modalTramo = document.getElementById('modalTramo');
+      if (modalTramo) modalTramo.value = normalizeTramo(rec.Tramo_Atencio || rec.horario || '08AM-12PM');
+
+      const modalFecha = document.getElementById('modalFechaReprograma');
+      if (modalFecha) {
+        modalFecha.value = formatDateForInput(rec.fecha_programacion || rec.F_Reprograma || '');
+      }
+
+      toggleReprogramaFields();
+      const modalEstDiv = document.getElementById('modalEstado');
+      if (modalEstDiv) modalEstDiv.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('modalEstado');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function toggleReprogramaFields() {
+      const estSelect = document.getElementById('modalEstadoSelect');
+      const section = document.getElementById('reprogramaSection');
+      if (estSelect && section) {
+        if (estSelect.value === 'REPROGRAMA') section.classList.remove('hidden');
+        else section.classList.add('hidden');
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const idOpEl = document.getElementById('modalIDoperacion');
+      if (!idOpEl) return;
+      
+      const idOp = idOpEl.value;
+      const rec = allRecords.find(r => String(r.IDoperacion || r.idoperacion).trim() === String(idOp).trim());
+      if (!rec) return;
+
+      const estSelect = document.getElementById('modalEstadoSelect');
+      const nuevoEstado = estSelect ? estSelect.value : 'EN PROCESO';
+
+      rec.Estado = nuevoEstado;
+      if (rec.estado !== undefined) rec.estado = nuevoEstado;
+
+      const tecEl = document.getElementById('modalTecnico');
+      const nuevaCuadrilla = tecEl ? String(tecEl.value).toUpperCase().trim() : '';
+      rec.Cuadrilla = nuevaCuadrilla;
+      if (rec.cuadrilla !== undefined) rec.cuadrilla = nuevaCuadrilla;
+
+      const obsEl = document.getElementById('modalObservaciones');
+      rec.Observaciones = obsEl ? String(obsEl.value).toUpperCase() : '';
+
+      let virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
+      virtualObs[idOp] = rec.Observaciones;
+      localStorage.setItem('win_virtual_obs', JSON.stringify(virtualObs));
+
+      const tramoEl = document.getElementById('modalTramo');
+      rec.Tramo_Atencio = tramoEl ? tramoEl.value : '';
+
+      const fechaEl = document.getElementById('modalFechaReprograma');
+      if (fechaEl && fechaEl.value) {
+        const parts = fechaEl.value.split('-');
+        if (parts.length === 3) {
+          rec.fecha_programacion = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+          rec.fecha_programacion = fechaEl.value;
+        }
+      }
+
+      closeModal();
+      detectDuplicateDnis();
+      renderAll();
+      syncToGoogleSheets(allRecords);
+
+      showToast("Actualizado", `Registro [${idOp}] actualizado correctamente.`);
+    }
+
+    function clearSearch() {
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) searchInput.value = "";
+      filterData();
+    }
+
+    function setSyncStatus(state, text) {
+      const dot = document.getElementById('syncDot');
+      const txt = document.getElementById('syncText');
+      if (txt) txt.innerText = text;
+
+      if (dot) {
+        if (state === 'loading') {
+          dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+        } else if (state === 'success') {
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        } else {
+          dot.className = "w-2 h-2 rounded-full bg-rose-500";
+        }
+      }
+    }
+  </script>
+</body>
+</html>

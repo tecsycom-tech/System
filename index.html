@@ -1398,6 +1398,7 @@
       return !s || s === 'VACIO' || s === 'VACÍO' || s === 'SIN CUADRILLA' || s === 'S/D' || s === 'ND' || s === '-';
     }
 
+    /* FUNCIÓN PROCESAR DATOS (CORREGIDA CON SINCRONIZACIÓN AUTOMÁTICA A GOOGLE SHEETS) */
     function processIncomingData(rows, ignoradas = []) {
       const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
       
@@ -1435,8 +1436,10 @@
 
         if (row["IdenServi"] && !row["Campaña"]) row["Campaña"] = extractCampana(row["IdenServi"]);
 
-        if (row["Estado"]) row["Estado"] = String(row["Estado"]).toUpperCase().trim();
-        if (row["estado"]) row["estado"] = String(row["estado"]).toUpperCase().trim();
+        let incEst = getEstVal(row);
+        row["Estado"] = incEst;
+        row["estado"] = incEst;
+
         if (row["Observaciones"]) row["Observaciones"] = String(row["Observaciones"]).toUpperCase();
 
         const existingIndex = allRecords.findIndex(r => String(r.IDoperacion || r.idoperacion).trim() === idOp);
@@ -1450,26 +1453,36 @@
           }
         }
 
-        let incEst = getEstVal(row);
         if (existingIndex !== -1) {
           const oldEst = getEstVal(allRecords[existingIndex]);
           if (oldEst === 'COORDINADO' && incEst === 'PROGRAMADO') {
             incEst = 'COORDINADO';
             row["Estado"] = 'COORDINADO';
-            if (row["estado"] !== undefined) row["estado"] = 'COORDINADO';
+            row["estado"] = 'COORDINADO';
           }
         }
 
         if (existingIndex !== -1) {
           const oldEst = getEstVal(allRecords[existingIndex]);
           if (incEst && incEst !== oldEst) {
-            cmp.cambios.push({ key: idOp, cliente: nomCli(row) || nomCli(allRecords[existingIndex]),
-              cuadrilla: getCuadVal(row) || getCuadVal(allRecords[existingIndex]), oldEst: oldEst || 'SIN ESTADO', newEst: incEst });
+            cmp.cambios.push({ 
+              key: idOp, 
+              cliente: nomCli(row) || nomCli(allRecords[existingIndex]),
+              cuadrilla: getCuadVal(row) || getCuadVal(allRecords[existingIndex]), 
+              oldEst: oldEst || 'SIN ESTADO', 
+              newEst: incEst 
+            });
           } else {
             cmp.sinCambio++;
           }
         } else {
-          cmp.nuevos.push({ key: idOp, cliente: nomCli(row), cuadrilla: getCuadVal(row), oldEst: 'NO REGISTRADO', newEst: incEst || 'PENDIENTE' });
+          cmp.nuevos.push({ 
+            key: idOp, 
+            cliente: nomCli(row), 
+            cuadrilla: getCuadVal(row), 
+            oldEst: 'NO REGISTRADO', 
+            newEst: incEst || 'PENDIENTE' 
+          });
         }
 
         if (existingIndex !== -1) {
@@ -1502,13 +1515,15 @@
       detectDuplicateDnis();
       renderAll();
       renderComparacion(cmp, sinCuadrilla);
+
+      // --- CORRECCIÓN INTEGRADA: Sincronización automática a Google Sheets ---
       syncToGoogleSheets(allRecords);
 
       if (retiradosQuantum.length > 0) {
         showToast("⚠️ ALERTA QUANTUM", `${retiradosQuantum.length} orden(es) ya no figuran en el archivo: [${retiradosQuantum.join(', ')}]`, true);
       } else {
         const extra = ignoradas.length ? ` (${ignoradas.length} columna(s) ignorada(s))` : '';
-        showToast("Sincronización Exitosa", `Datos actualizados. Nuevos: ${nuevosAgregados}.${extra}`);
+        showToast("Sincronización Exitosa", `Datos actualizados. Nuevos: ${nuevosAgregados}, Cambios de estado: ${cmp.cambios.length}.${extra}`);
       }
     }
 

@@ -1603,14 +1603,28 @@
       XLSX.writeFile(wb, `Hoja 1_Completo_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    function fetchFromGoogleSheets() {
-      setSyncStatus("loading", "Sincronizando con Sheet...");
-      fetch(`${SCRIPT_WEB_APP_URL}?sheet=Hoja%201&startCol=AG`, { redirect: "follow" })
+    function fetchFromGoogleSheets(silent) {
+      if (silent === true) {
+        const ae = document.activeElement;
+        const editando = ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName);
+        const modal = document.getElementById('modalEstado');
+        const modalAbierto = modal && !modal.classList.contains('hidden');
+        if (document.hidden || editando || modalAbierto || allRecords.length === 0) return;
+        if (Date.now() - lastSyncTs < 20000) return;
+      } else {
+        setSyncStatus("loading", "Sincronizando con Sheet...");
+      }
+      fetch(`${SCRIPT_WEB_APP_URL}?sheet=Hoja%201&startCol=AG${silent === true ? '&_=' + Date.now() : ''}`, { redirect: "follow" })
         .then(res => {
           if (!res.ok) throw new Error("Error HTTP: " + res.status);
           return res.json();
         })
         .then(data => {
+          const sig = JSON.stringify(data);
+          if (silent === true) {
+            if (!Array.isArray(data) || data.length === 0 || sig === lastFetchSig) return;
+          }
+          lastFetchSig = sig;
           const virtualObs = JSON.parse(localStorage.getItem('win_virtual_obs') || '{}');
           if (Array.isArray(data) && data.length > 0) {
             allRecords = data.map(item => {
@@ -1639,12 +1653,14 @@
         })
         .catch(err => {
           console.error("Error sincronizando:", err);
+          if (silent === true) return;
           setSyncStatus("error", "Error de conexión");
           renderAll();
         });
     }
 
     function syncToGoogleSheets(records) {
+      lastSyncTs = Date.now();
       setSyncStatus("loading", "Guardando Cloud...");
       fetch(SCRIPT_WEB_APP_URL, {
         method: "POST",
@@ -1972,6 +1988,11 @@
         thead.appendChild(th);
       });
 
+      const thGes = document.createElement('th');
+      thGes.className = "p-3 text-center uppercase text-[10px]";
+      thGes.innerText = "Gestión";
+      thead.appendChild(thGes);
+
       const thAcc = document.createElement('th');
       thAcc.className = "p-3 text-center uppercase text-[10px]";
       thAcc.innerText = "Accion";
@@ -2028,6 +2049,13 @@
           tr.appendChild(td);
         });
 
+        const ges = getGestion(row);
+        if (ges) tr.style.boxShadow = ges.estado === 'GESTIONADO' ? 'inset 5px 0 0 #16a34a' : 'inset 5px 0 0 #f59e0b';
+        const tdGes = document.createElement('td');
+        tdGes.className = "p-3 text-center whitespace-nowrap";
+        tdGes.innerHTML = renderGestionBtn(idOp, ges);
+        tr.appendChild(tdGes);
+
         const tdAcc = document.createElement('td');
         tdAcc.className = "p-3 text-center";
         tdAcc.innerHTML = `
@@ -2042,6 +2070,183 @@
 
       lucide.createIcons();
     }
+
+    /* ===== MARCAS DE GESTIÓN EN LÍNEA (evitar doble gestión) ===== */
+    let lastSyncTs = 0;
+    let lastFetchSig = '';
+    const GESTION_POLL_MS = 15000;
+
+    function gKey(r) { return String(r.IDoperacion || r.idoperacion || '').trim(); }
+
+    function getGestion(rec) {
+      const e = String(rec.Gestion_Estado || '').toUpperCase().trim();
+      if (e !== 'TOMADO' && e !== 'GESTIONADO') return null;
+      return { estado: e, por: String(rec.Gestion_Por || '').trim(), hora: Number(rec.Gestion_Hora) || 0 };
+    }
+
+    function gHace(ts) {
+      if (!ts) return '';
+      const min = Math.max(0, Math.round((Date.now() - ts) / 60000));
+      if (min < 1) return 'hace un momento';
+      if (min < 60) return `hace ${min} min`;
+      const h = Math.floor(min / 60);
+      return `hace ${h}h ${min % 60}m`;
+    }
+
+    const GESTORES = ['ROSA', 'WENDY', 'MICHELL'];
+
+    function getGestorNombre() {
+      const n = (localStorage.getItem('gestor_nombre') || '').toUpperCase().trim();
+      return GESTORES.includes(n) ? n : '';
+    }
+
+    function pedirGestor(callback) {
+      const previo = document.getElementById('gestorPicker');
+      if (previo) previo.remove();
+      const actual = getGestorNombre();
+      const ov = document.createElement('div');
+      ov.id = 'gestorPicker';
+      ov.className = 'fixed inset-0 z-[10000] bg-slate-900/50 flex items-center justify-center p-4';
+      ov.innerHTML = `
+        <div class="bg-white rounded-xl shadow-2xl p-5 w-72">
+          <div class="text-sm font-bold text-slate-800 mb-1">¿Quién eres?</div>
+          <div class="text-xs text-slate-500 mb-3">Se mostrará a los demás al tomar o gestionar un registro.</div>
+          <div class="flex flex-col gap-2">
+            ${GESTORES.map(g => `<button type="button" data-g="${g}" class="gestor-opt w-full px-3 py-2 rounded-lg border text-sm font-bold transition ${g === actual ? 'bg-amber-100 border-amber-400 text-amber-800' : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-amber-50 hover:border-amber-300'}">${g}</button>`).join('')}
+          </div>
+          <button type="button" id="gestorCancel" class="w-full mt-3 text-xs text-slate-400 hover:text-slate-600">Cancelar</button>
+        </div>`;
+      document.body.appendChild(ov);
+      ov.querySelectorAll('.gestor-opt').forEach(b => b.addEventListener('click', () => {
+        localStorage.setItem('gestor_nombre', b.dataset.g);
+        ov.remove();
+        if (typeof callback === 'function') callback(b.dataset.g);
+      }));
+      ov.querySelector('#gestorCancel').addEventListener('click', () => ov.remove());
+      ov.addEventListener('mousedown', e => { if (e.target === ov) ov.remove(); });
+    }
+
+    function renderGestionBtn(idOp, g) {
+      const id = esc(idOp);
+      if (!g) {
+        return `<button type="button" data-id="${id}" onclick="onGestionClick(this, this.dataset.id)" title="Libre · clic para TOMAR este registro" class="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 transition"><i data-lucide="hand" class="w-3.5 h-3.5"></i></button>`;
+      }
+      const corto = esc((g.por || '').split(' ')[0].slice(0, 10));
+      if (g.estado === 'GESTIONADO') {
+        return `<button type="button" data-id="${id}" onclick="onGestionClick(this, this.dataset.id)" title="GESTIONADO por ${esc(g.por)} ${gHace(g.hora)}" class="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px] font-bold"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>${corto}</button>`;
+      }
+      return `<button type="button" data-id="${id}" onclick="onGestionClick(this, this.dataset.id)" title="EN GESTIÓN por ${esc(g.por)} ${gHace(g.hora)}" class="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg border border-amber-300 bg-amber-100 text-amber-800 text-[10px] font-bold"><i data-lucide="user-check" class="w-3.5 h-3.5"></i>${corto}</button>`;
+    }
+
+    function closeGestionMenu() {
+      const m = document.getElementById('gestionMenu');
+      if (m) m.remove();
+      document.removeEventListener('mousedown', gestionOutside, true);
+    }
+    function gestionOutside(e) {
+      const m = document.getElementById('gestionMenu');
+      if (m && !m.contains(e.target)) closeGestionMenu();
+    }
+
+    function onGestionClick(btn, idOp) {
+      closeGestionMenu();
+      const rec = allRecords.find(r => gKey(r) === String(idOp).trim());
+      if (!rec) return;
+      const g = getGestion(rec);
+      if (!g) { setGestion(idOp, 'TOMAR'); return; }
+
+      const nombre = getGestorNombre();
+      const mio = nombre && g.por === nombre;
+      const titulo = g.estado === 'GESTIONADO' ? 'Gestionado' : 'En gestión';
+      const m = document.createElement('div');
+      m.id = 'gestionMenu';
+      m.className = 'fixed z-[9999] bg-white border border-slate-300 rounded-lg shadow-xl p-2 text-xs w-56';
+      const b = (label, accion, cls) => `<button type="button" onclick="setGestion('${esc(idOp)}','${accion}')" class="w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 ${cls || ''}">${label}</button>`;
+      m.innerHTML = `
+        <div class="px-2 pb-1.5 mb-1 border-b border-slate-200">
+          <div class="font-bold text-slate-800">${titulo}${mio ? ' (tú)' : ''}</div>
+          <div class="text-slate-500">${esc(g.por)} · ${gHace(g.hora)}</div>
+        </div>
+        ${g.estado !== 'GESTIONADO' ? b('✔ Marcar como GESTIONADO', 'GESTIONADO', 'text-emerald-700 font-semibold') : ''}
+        ${!(g.estado === 'TOMADO' && mio) ? b('✋ Tomar yo este registro', 'TOMAR', 'text-amber-700 font-semibold') : ''}
+        ${b('↩ Liberar (quitar marca)', 'LIBERAR', 'text-slate-600')}
+        <button type="button" onclick="closeGestionMenu(); pedirGestor()" class="w-full text-left px-2 py-1.5 rounded hover:bg-slate-100 text-slate-400">Cambiar mi nombre (${esc(nombre || 'sin definir')})</button>`;
+      document.body.appendChild(m);
+      const r = btn.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - 232, Math.max(8, r.right - 224));
+      const top = (r.bottom + 4 + m.offsetHeight > window.innerHeight) ? Math.max(8, r.top - m.offsetHeight - 4) : r.bottom + 4;
+      m.style.left = left + 'px';
+      m.style.top = top + 'px';
+      setTimeout(() => document.addEventListener('mousedown', gestionOutside, true), 0);
+    }
+
+    function gFetchLatest() {
+      return fetch(`${SCRIPT_WEB_APP_URL}?sheet=Hoja%201&startCol=AG&_=${Date.now()}`, { redirect: "follow" })
+        .then(res => { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); });
+    }
+
+    function setGestion(idOp, accion) {
+      closeGestionMenu();
+      const nombre = getGestorNombre();
+      if (!nombre) { pedirGestor(() => setGestion(idOp, accion)); return; }
+      const id = String(idOp).trim();
+      setSyncStatus("loading", "Actualizando marca...");
+
+      gFetchLatest().then(latest => {
+        // Traer las marcas más recientes de todos para no pisar lo que otros marcaron
+        const byId = {};
+        if (Array.isArray(latest)) latest.forEach(r => { byId[gKey(r)] = r; });
+        allRecords.forEach(r => {
+          const l = byId[gKey(r)];
+          if (l) {
+            r.Gestion_Estado = l.Gestion_Estado || '';
+            r.Gestion_Por = l.Gestion_Por || '';
+            r.Gestion_Hora = l.Gestion_Hora || '';
+          }
+        });
+
+        const rec = allRecords.find(r => gKey(r) === id);
+        if (!rec) { setSyncStatus("success", "Sincronizado"); return; }
+
+        if (accion === 'TOMAR') {
+          const g = getGestion(rec);
+          if (g && g.estado === 'TOMADO' && g.por !== nombre) {
+            if (!confirm(`⚠ Este registro ya está en gestión por ${g.por} (${gHace(g.hora)}).\n\n¿Tomarlo de todas formas?`)) {
+              setSyncStatus("success", "Sincronizado");
+              renderAll();
+              return;
+            }
+          }
+          rec.Gestion_Estado = 'TOMADO'; rec.Gestion_Por = nombre; rec.Gestion_Hora = Date.now();
+        } else if (accion === 'GESTIONADO') {
+          rec.Gestion_Estado = 'GESTIONADO'; rec.Gestion_Por = nombre; rec.Gestion_Hora = Date.now();
+        } else {
+          rec.Gestion_Estado = ''; rec.Gestion_Por = ''; rec.Gestion_Hora = '';
+        }
+
+        syncToGoogleSheets(allRecords);
+        renderAll();
+
+        // Verificar que el Sheet realmente guardó la marca
+        setTimeout(() => {
+          gFetchLatest().then(l => {
+            const lr = (Array.isArray(l) ? l : []).find(r => gKey(r) === id);
+            const guardado = String((lr && lr.Gestion_Estado) || '');
+            if (guardado !== String(rec.Gestion_Estado || '')) {
+              showToast("No se pudo confirmar la marca en el Sheet", "Verifica que 'Hoja 1' tenga las columnas Gestion_Estado, Gestion_Por y Gestion_Hora para que los demás vean la marca.");
+            }
+          }).catch(() => {});
+        }, 6000);
+      }).catch(err => {
+        console.error(err);
+        setSyncStatus("error", "No se pudo marcar");
+        showToast("No se pudo marcar", "Sin conexión con el Sheet. Intenta de nuevo.");
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      setInterval(() => fetchFromGoogleSheets(true), GESTION_POLL_MS);
+    });
 
     function makeResizable(th, resizer) {
       let x = 0;

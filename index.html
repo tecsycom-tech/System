@@ -1039,13 +1039,13 @@
         const minutes = Math.floor(total_seconds / 60);
         const seconds = total_seconds % 60;
 
-        date_info.setHours(hours, minutes, seconds);
-        const day = String(date_info.getDate()).padStart(2, '0');
-        const month = String(date_info.getMonth() + 1).padStart(2, '0');
-        const year = date_info.getFullYear();
-        const hh = String(date_info.getHours()).padStart(2, '0');
-        const mm = String(date_info.getMinutes()).padStart(2, '0');
-        const ss = String(date_info.getSeconds()).padStart(2, '0');
+        date_info.setUTCHours(hours, minutes, seconds);
+        const day = String(date_info.getUTCDate()).padStart(2, '0');
+        const month = String(date_info.getUTCMonth() + 1).padStart(2, '0');
+        const year = date_info.getUTCFullYear();
+        const hh = String(date_info.getUTCHours()).padStart(2, '0');
+        const mm = String(date_info.getUTCMinutes()).padStart(2, '0');
+        const ss = String(date_info.getUTCSeconds()).padStart(2, '0');
         return `${day}/${month}/${year} ${hh}:${mm}:${ss}`;
       }
 
@@ -1312,9 +1312,9 @@
             let fUltEst = formatCleanDate(getVal("FechaUltiEsta"));
 
             let hProceso = "", hProgra = "", hInicio = "";
-            if (estadoWin === "INICIADA") hProceso = fUltEst;
+            if (estadoFinal === "EN CAMINO") hInicio = fUltEst;
+            else if (estadoFinal === "EN PROCESO") hProceso = fUltEst;
             else if (estadoWin === "AGENDADA") hProgra = fUltEst;
-            else hInicio = fUltEst;
 
             let fijo = String(getVal("TeleFijoNume")).trim();
             if (fijo === "0") fijo = "";

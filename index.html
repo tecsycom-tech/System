@@ -1450,6 +1450,10 @@
           if (isCuadrillaEmpty(incomingCuadrilla) && !isCuadrillaEmpty(oldCuadrilla)) {
             row["Cuadrilla"] = oldCuadrilla;
             if (row["cuadrilla"] !== undefined) row["cuadrilla"] = oldCuadrilla;
+          } else if (!isCuadrillaEmpty(incomingCuadrilla)) {
+            // Antes vacía (o distinta) y ahora con cuadrilla: se actualiza en ambas claves
+            row["Cuadrilla"] = incomingCuadrilla;
+            if (row["cuadrilla"] !== undefined || allRecords[existingIndex].cuadrilla !== undefined) row["cuadrilla"] = incomingCuadrilla;
           }
         }
 
